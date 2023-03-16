@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-go run gpterm/cmd/gpterm $@
+go run github.com/collinvandyck/gpterm/cmd/gpterm $@
 
