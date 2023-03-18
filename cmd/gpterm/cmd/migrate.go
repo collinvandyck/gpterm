@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 
 	"github.com/collinvandyck/gpterm"
 	"github.com/collinvandyck/gpterm/lib/git"
@@ -95,6 +96,38 @@ func migrateCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmdStep := &cobra.Command{
+		Use:   "step [n]",
+		Short: "migrate up or down (+n | -n)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			n, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return err
+			}
+			dbPath, err := gpterm.DefaultDBPath()
+			if err != nil {
+				return err
+			}
+			sourceDriver, err := iofs.New(gpterm.FSMigrations, "db/migrations")
+			if err != nil {
+				return err
+			}
+			path := "sqlite3://" + dbPath
+			mg, err := migrate.NewWithSourceInstance("iofs", sourceDriver, path)
+			if err != nil {
+				return err
+			}
+			fmt.Println("Stepping", n)
+			err = mg.Steps(int(n))
+			switch {
+			case errors.Is(err, migrate.ErrNoChange):
+			case err != nil:
+				return fmt.Errorf("step: %w", err)
+			}
+			return nil
+		},
+	}
 	cmdReset := &cobra.Command{
 		Use:   "reset",
 		Short: "Resets the database by reapplying all migrations",
@@ -121,5 +154,6 @@ func migrateCmd() *cobra.Command {
 	cmd.AddCommand(cmdUp)
 	cmd.AddCommand(cmdDown)
 	cmd.AddCommand(cmdReset)
+	cmd.AddCommand(cmdStep)
 	return cmd
 }
