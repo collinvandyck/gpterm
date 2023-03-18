@@ -22,9 +22,15 @@ func Usage() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Println("Prompt:    ", usage.PromptTokens)
-			fmt.Println("Completion:", usage.CompletionTokens)
-			fmt.Println("Total:     ", usage.TotalTokens)
+
+			// gpt-3.5-turbo cost is $0.002 / 1K tokens
+			cost := 0.002 * (float64(usage.TotalTokens) / 1000)
+
+			fmt.Printf("Prompt:     %d\n", usage.PromptTokens)
+			fmt.Printf("Completion: %d\n", usage.CompletionTokens)
+			fmt.Printf("Total:      %d\n", usage.TotalTokens)
+			fmt.Printf("Cost:       $%0.003f ($0.002 per 1K tokens)\n", cost)
+
 			return nil
 		},
 	}
