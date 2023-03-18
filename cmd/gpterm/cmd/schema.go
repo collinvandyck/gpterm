@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/collinvandyck/gpterm"
+	"github.com/collinvandyck/gpterm/lib/cmdkit"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +21,7 @@ func schemaCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			tmpDir, err := os.MkdirTemp("", "")
 			if err != nil {
-				return err
+				return fmt.Errorf("mktmp: %w", err)
 			}
 			defer os.RemoveAll(tmpDir)
 			store, err := gpterm.NewStore(gpterm.StoreDir(tmpDir))
@@ -48,6 +49,7 @@ func schemaCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("wait: %w", err)
 			}
+			cmdkit.ChdirProject()
 			f, err := os.Create("db/schema.sql")
 			if err != nil {
 				return err

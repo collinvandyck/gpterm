@@ -2,7 +2,8 @@ version: 2
 sql:
   - engine: "sqlite"
     schema: "schema.sql"
-    queries: "query.sql"
+    queries: 
+      - "queries/credentials.sql"
     gen:
       go:
         package: "query"

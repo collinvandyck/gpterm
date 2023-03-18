@@ -8,3 +8,4 @@ INSERT INTO credential (name, value) values ('api_key', ?);
 -- name: UpdateAPIKey :exec
 UPDATE credential set value=? where name='api_key';
 
+

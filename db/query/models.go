@@ -4,9 +4,18 @@
 
 package query
 
-import ()
+import (
+	"database/sql"
+)
 
 type Credential struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
+}
+
+type Message struct {
+	ID        int64          `json:"id"`
+	Timestamp sql.NullString `json:"timestamp"`
+	Role      sql.NullString `json:"role"`
+	Content   sql.NullString `json:"content"`
 }
