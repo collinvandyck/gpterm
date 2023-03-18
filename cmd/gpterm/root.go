@@ -18,7 +18,7 @@ var root = &cobra.Command{
 
 func init() {
 	root.AddCommand(cmd.Auth())
-	root.AddCommand(cmd.Repl())
+	root.AddCommand(cmd.Repl(exp.TUI()))
 	root.AddCommand(cmd.Deps())
 	root.AddCommand(cmd.Usage())
 	root.AddCommand(db.DB(cmd.Deps()))
