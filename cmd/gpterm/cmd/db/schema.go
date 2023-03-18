@@ -1,4 +1,4 @@
-package cmd
+package db
 
 import (
 	"bufio"
@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func schemaCmd() *cobra.Command {
+func Schema() *cobra.Command {
 	return &cobra.Command{
 		Use:   "schema",
 		Short: "updates schema and runs migrations",

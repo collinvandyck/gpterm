@@ -1,4 +1,4 @@
-package cmd
+package db
 
 import (
 	"bufio"
@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func migrateCmd() *cobra.Command {
+func Migrate(deps *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "migrate",
 		Short: "Run db migrations",
@@ -25,7 +25,7 @@ func migrateCmd() *cobra.Command {
 		Use:     "new [name]",
 		Short:   "Create a new migration",
 		Args:    cobra.ExactArgs(1),
-		PreRunE: Deps().RunE,
+		PreRunE: deps.RunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// migrate create -ext sql -dir migrations -seq credential
 			dir := git.MustProjectDir()

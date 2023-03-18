@@ -1,4 +1,4 @@
-package cmd
+package db
 
 import (
 	"os"
@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func sqliteCmd() *cobra.Command {
+func Sqlite() *cobra.Command {
 	return &cobra.Command{
 		Use:   "sqlite",
 		Short: "open sqlite3 against the database",

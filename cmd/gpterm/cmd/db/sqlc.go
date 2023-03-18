@@ -1,4 +1,4 @@
-package cmd
+package db
 
 import (
 	"fmt"
@@ -9,16 +9,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func sqlcCmd() *cobra.Command {
+func SqlC(deps *cobra.Command) *cobra.Command {
 	return &cobra.Command{
 		Use:   "sqlc",
 		Short: "Generates sqlc queries",
 		PreRunE: func(cmd *cobra.Command, _ []string) error {
-			err := Deps().RunE(cmd, nil)
+			err := deps.RunE(cmd, nil)
 			if err != nil {
 				return err
 			}
-			err = schemaCmd().RunE(cmd, nil)
+			err = Schema().RunE(cmd, nil)
 			if err != nil {
 				return err
 			}

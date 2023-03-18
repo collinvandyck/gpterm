@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/collinvandyck/gpterm/cmd/gpterm/cmd"
+	"github.com/collinvandyck/gpterm/cmd/gpterm/cmd/db"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +18,7 @@ var root = &cobra.Command{
 func init() {
 	root.AddCommand(cmd.Auth())
 	root.AddCommand(cmd.Repl())
-	root.AddCommand(cmd.DB())
+	root.AddCommand(db.DB(cmd.Deps()))
 	root.AddCommand(cmd.Deps())
 	root.AddCommand(cmd.Usage())
 }
