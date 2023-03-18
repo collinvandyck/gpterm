@@ -73,6 +73,27 @@ func NewStore(opts ...StoreOpt) (*Store, error) {
 	return store, nil
 }
 
+func (s *Store) GetTotalUsage(ctx context.Context) (res query.Usage, err error) {
+	completion, err := s.queries.GetCompletionTokens(ctx)
+	if err != nil {
+		return
+	}
+	prompt, err := s.queries.GetPromptTokens(ctx)
+	if err != nil {
+		return
+	}
+	total, err := s.queries.GetTotalTokens(ctx)
+	if err != nil {
+		return
+	}
+	res = query.Usage{
+		PromptTokens:     int64(prompt),
+		CompletionTokens: int64(completion),
+		TotalTokens:      int64(total),
+	}
+	return
+}
+
 func (s *Store) GetLastMessages(ctx context.Context, count int) ([]query.Message, error) {
 	return s.queries.GetLatestMessages(ctx, int64(count))
 }

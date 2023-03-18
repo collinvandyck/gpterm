@@ -19,6 +19,7 @@ func init() {
 	root.AddCommand(cmd.Repl())
 	root.AddCommand(cmd.DB())
 	root.AddCommand(cmd.Deps())
+	root.AddCommand(cmd.Usage())
 }
 
 func main() {
