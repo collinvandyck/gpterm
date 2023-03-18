@@ -9,7 +9,7 @@ import (
 )
 
 func ChdirProject(paths ...string) {
-	pd := must.SucceedVal(git.ProjectDir())
+	pd := git.MustProjectDir()
 	paths = append([]string{pd}, paths...)
 	fullPath := filepath.Join(paths...)
 	must.Succeed(os.Chdir(fullPath))
