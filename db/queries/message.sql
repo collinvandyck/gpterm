@@ -2,5 +2,5 @@
 SELECT * FROM message;
 
 -- name: InsertMessage :exec
-INSERT INTO message (timestamp, role, content) 
-VALUES (?,?,?);
+INSERT INTO message (role, content) 
+VALUES (?,?);

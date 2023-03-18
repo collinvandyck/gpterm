@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/collinvandyck/gpterm/lib/cmdkit"
@@ -22,10 +23,9 @@ func sqlcCmd() *cobra.Command {
 				"sqlc.yaml")
 			out, err := ec.CombinedOutput()
 			if err != nil {
-				fmt.Println(string(out))
+				fmt.Fprintln(os.Stderr, string(out))
 				return err
 			}
-			fmt.Println(string(out))
 			return nil
 		},
 	}

@@ -7,7 +7,6 @@ package query
 
 import (
 	"context"
-	"database/sql"
 )
 
 const getMessages = `-- name: GetMessages :many
@@ -15,7 +14,7 @@ SELECT id, timestamp, role, content FROM message
 `
 
 func (q *Queries) GetMessages(ctx context.Context) ([]Message, error) {
-	rows, err := q.db.QueryContext(ctx, getMessages)
+	rows, err := q.query(ctx, q.getMessagesStmt, getMessages)
 	if err != nil {
 		return nil, err
 	}
@@ -43,17 +42,16 @@ func (q *Queries) GetMessages(ctx context.Context) ([]Message, error) {
 }
 
 const insertMessage = `-- name: InsertMessage :exec
-INSERT INTO message (timestamp, role, content) 
-VALUES (?,?,?)
+INSERT INTO message (role, content) 
+VALUES (?,?)
 `
 
 type InsertMessageParams struct {
-	Timestamp sql.NullString `json:"timestamp"`
-	Role      sql.NullString `json:"role"`
-	Content   sql.NullString `json:"content"`
+	Role    string `json:"role"`
+	Content string `json:"content"`
 }
 
 func (q *Queries) InsertMessage(ctx context.Context, arg InsertMessageParams) error {
-	_, err := q.db.ExecContext(ctx, insertMessage, arg.Timestamp, arg.Role, arg.Content)
+	_, err := q.exec(ctx, q.insertMessageStmt, insertMessage, arg.Role, arg.Content)
 	return err
 }

@@ -15,7 +15,7 @@ WHERE name='api_key' LIMIT 1
 `
 
 func (q *Queries) GetAPIKey(ctx context.Context) (string, error) {
-	row := q.db.QueryRowContext(ctx, getAPIKey)
+	row := q.queryRow(ctx, q.getAPIKeyStmt, getAPIKey)
 	var value string
 	err := row.Scan(&value)
 	return value, err
@@ -26,7 +26,7 @@ INSERT INTO credential (name, value) values ('api_key', ?)
 `
 
 func (q *Queries) InsertAPIKey(ctx context.Context, value string) error {
-	_, err := q.db.ExecContext(ctx, insertAPIKey, value)
+	_, err := q.exec(ctx, q.insertAPIKeyStmt, insertAPIKey, value)
 	return err
 }
 
@@ -35,6 +35,6 @@ UPDATE credential set value=? where name='api_key'
 `
 
 func (q *Queries) UpdateAPIKey(ctx context.Context, value string) error {
-	_, err := q.db.ExecContext(ctx, updateAPIKey, value)
+	_, err := q.exec(ctx, q.updateAPIKeyStmt, updateAPIKey, value)
 	return err
 }

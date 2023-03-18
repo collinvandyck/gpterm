@@ -4,7 +4,7 @@ CREATE TABLE credential (
 );
 CREATE TABLE message (
 	id integer primary key,
-	timestamp text,
-	role text,
-	content text
+	timestamp datetime not null default current_timestamp,
+	role text not null,
+	content text not null
 );
