@@ -5,7 +5,7 @@ VALUES
 (?,?,?);
 
 -- name: GetTotalTokens :one
-SELECT total(total_tokens) as integer from usage;
+SELECT total(total_tokens) from usage;
 
 -- name: GetCompletionTokens :one
 SELECT total(completion_tokens) from usage;
