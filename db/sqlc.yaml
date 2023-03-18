@@ -5,6 +5,7 @@ sql:
     queries: 
       - "queries/credential.sql"
       - "queries/message.sql"
+      - "queries/usage.sql"
     gen:
       go:
         package: "query"

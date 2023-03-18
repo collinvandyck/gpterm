@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/collinvandyck/gpterm/db/query"
 	"github.com/collinvandyck/gpterm/lib/errs"
@@ -15,8 +16,8 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	_ "github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/sashabaranov/go-openai"
 )
 
 const DBName = "gpterm.db"
@@ -70,6 +71,45 @@ func NewStore(opts ...StoreOpt) (*Store, error) {
 		return nil, err
 	}
 	return store, nil
+}
+
+func (s *Store) GetLastMessages(ctx context.Context, count int) ([]query.Message, error) {
+	return s.queries.GetLatestMessages(ctx, int64(count))
+}
+
+func (s *Store) SaveRequestResponse(ctx context.Context, req openai.ChatCompletionRequest, resp openai.ChatCompletionResponse) error {
+	// save the last message in the request. that skips the context messages
+	if len(req.Messages) > 1 {
+		m := req.Messages[len(req.Messages)-1]
+		err := s.queries.InsertMessage(ctx, query.InsertMessageParams{
+			Role:    m.Role,
+			Content: strings.TrimSpace(m.Content),
+		})
+		if err != nil {
+			return err
+		}
+	}
+	// save all responses
+	for _, choice := range resp.Choices {
+		m := choice.Message
+		err := s.queries.InsertMessage(ctx, query.InsertMessageParams{
+			Role:    m.Role,
+			Content: strings.TrimSpace(m.Content),
+		})
+		if err != nil {
+			return err
+		}
+	}
+	// save usage
+	err := s.queries.InsertUsage(ctx, query.InsertUsageParams{
+		PromptTokens:     int64(resp.Usage.PromptTokens),
+		CompletionTokens: int64(resp.Usage.CompletionTokens),
+		TotalTokens:      int64(resp.Usage.TotalTokens),
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Store) SetAPIKey(ctx context.Context, key string) error {

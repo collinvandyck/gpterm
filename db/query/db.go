@@ -27,14 +27,29 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getAPIKeyStmt, err = db.PrepareContext(ctx, getAPIKey); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAPIKey: %w", err)
 	}
+	if q.getCompletionTokensStmt, err = db.PrepareContext(ctx, getCompletionTokens); err != nil {
+		return nil, fmt.Errorf("error preparing query GetCompletionTokens: %w", err)
+	}
+	if q.getLatestMessagesStmt, err = db.PrepareContext(ctx, getLatestMessages); err != nil {
+		return nil, fmt.Errorf("error preparing query GetLatestMessages: %w", err)
+	}
 	if q.getMessagesStmt, err = db.PrepareContext(ctx, getMessages); err != nil {
 		return nil, fmt.Errorf("error preparing query GetMessages: %w", err)
+	}
+	if q.getPromptTokensStmt, err = db.PrepareContext(ctx, getPromptTokens); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPromptTokens: %w", err)
+	}
+	if q.getTotalTokensStmt, err = db.PrepareContext(ctx, getTotalTokens); err != nil {
+		return nil, fmt.Errorf("error preparing query GetTotalTokens: %w", err)
 	}
 	if q.insertAPIKeyStmt, err = db.PrepareContext(ctx, insertAPIKey); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertAPIKey: %w", err)
 	}
 	if q.insertMessageStmt, err = db.PrepareContext(ctx, insertMessage); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertMessage: %w", err)
+	}
+	if q.insertUsageStmt, err = db.PrepareContext(ctx, insertUsage); err != nil {
+		return nil, fmt.Errorf("error preparing query InsertUsage: %w", err)
 	}
 	if q.updateAPIKeyStmt, err = db.PrepareContext(ctx, updateAPIKey); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateAPIKey: %w", err)
@@ -49,9 +64,29 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getAPIKeyStmt: %w", cerr)
 		}
 	}
+	if q.getCompletionTokensStmt != nil {
+		if cerr := q.getCompletionTokensStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getCompletionTokensStmt: %w", cerr)
+		}
+	}
+	if q.getLatestMessagesStmt != nil {
+		if cerr := q.getLatestMessagesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getLatestMessagesStmt: %w", cerr)
+		}
+	}
 	if q.getMessagesStmt != nil {
 		if cerr := q.getMessagesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getMessagesStmt: %w", cerr)
+		}
+	}
+	if q.getPromptTokensStmt != nil {
+		if cerr := q.getPromptTokensStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPromptTokensStmt: %w", cerr)
+		}
+	}
+	if q.getTotalTokensStmt != nil {
+		if cerr := q.getTotalTokensStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getTotalTokensStmt: %w", cerr)
 		}
 	}
 	if q.insertAPIKeyStmt != nil {
@@ -62,6 +97,11 @@ func (q *Queries) Close() error {
 	if q.insertMessageStmt != nil {
 		if cerr := q.insertMessageStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing insertMessageStmt: %w", cerr)
+		}
+	}
+	if q.insertUsageStmt != nil {
+		if cerr := q.insertUsageStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing insertUsageStmt: %w", cerr)
 		}
 	}
 	if q.updateAPIKeyStmt != nil {
@@ -106,23 +146,33 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                DBTX
-	tx                *sql.Tx
-	getAPIKeyStmt     *sql.Stmt
-	getMessagesStmt   *sql.Stmt
-	insertAPIKeyStmt  *sql.Stmt
-	insertMessageStmt *sql.Stmt
-	updateAPIKeyStmt  *sql.Stmt
+	db                      DBTX
+	tx                      *sql.Tx
+	getAPIKeyStmt           *sql.Stmt
+	getCompletionTokensStmt *sql.Stmt
+	getLatestMessagesStmt   *sql.Stmt
+	getMessagesStmt         *sql.Stmt
+	getPromptTokensStmt     *sql.Stmt
+	getTotalTokensStmt      *sql.Stmt
+	insertAPIKeyStmt        *sql.Stmt
+	insertMessageStmt       *sql.Stmt
+	insertUsageStmt         *sql.Stmt
+	updateAPIKeyStmt        *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                tx,
-		tx:                tx,
-		getAPIKeyStmt:     q.getAPIKeyStmt,
-		getMessagesStmt:   q.getMessagesStmt,
-		insertAPIKeyStmt:  q.insertAPIKeyStmt,
-		insertMessageStmt: q.insertMessageStmt,
-		updateAPIKeyStmt:  q.updateAPIKeyStmt,
+		db:                      tx,
+		tx:                      tx,
+		getAPIKeyStmt:           q.getAPIKeyStmt,
+		getCompletionTokensStmt: q.getCompletionTokensStmt,
+		getLatestMessagesStmt:   q.getLatestMessagesStmt,
+		getMessagesStmt:         q.getMessagesStmt,
+		getPromptTokensStmt:     q.getPromptTokensStmt,
+		getTotalTokensStmt:      q.getTotalTokensStmt,
+		insertAPIKeyStmt:        q.insertAPIKeyStmt,
+		insertMessageStmt:       q.insertMessageStmt,
+		insertUsageStmt:         q.insertUsageStmt,
+		updateAPIKeyStmt:        q.updateAPIKeyStmt,
 	}
 }

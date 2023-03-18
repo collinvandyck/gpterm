@@ -11,10 +11,20 @@ import (
 
 func sqlcCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "sqlc",
-		Short:   "Generates sqlc queries",
-		PreRunE: Deps().RunE,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		Use:   "sqlc",
+		Short: "Generates sqlc queries",
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
+			err := Deps().RunE(cmd, nil)
+			if err != nil {
+				return err
+			}
+			err = schemaCmd().RunE(cmd, nil)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+		RunE: func(_ *cobra.Command, _ []string) error {
 			cmdkit.ChdirProject("db")
 			ec := exec.Command(
 				"sqlc",

@@ -9,6 +9,41 @@ import (
 	"context"
 )
 
+const getLatestMessages = `-- name: GetLatestMessages :many
+select id, timestamp, role, content
+from message
+where id in (select id from message order by id desc limit ?)
+order by id
+`
+
+func (q *Queries) GetLatestMessages(ctx context.Context, limit int64) ([]Message, error) {
+	rows, err := q.query(ctx, q.getLatestMessagesStmt, getLatestMessages, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Message
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.Timestamp,
+			&i.Role,
+			&i.Content,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMessages = `-- name: GetMessages :many
 SELECT id, timestamp, role, content FROM message
 `

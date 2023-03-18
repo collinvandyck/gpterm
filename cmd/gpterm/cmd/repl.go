@@ -26,7 +26,10 @@ func Repl() *cobra.Command {
 				return err
 			}
 			if key == "" {
-				return fmt.Errorf("No API key has been set. Run '%s auth' to set it first.", cmd.Root().Use)
+				fmt.Fprintln(os.Stderr, "No API key has been set. Run this command to set it:")
+				fmt.Fprintln(os.Stderr, "")
+				fmt.Fprintln(os.Stderr, fmt.Sprintf("%s auth", cmd.Root().Use))
+				os.Exit(1)
 			}
 			gpt, err := gpterm.NewClient(ctx, store)
 			if err != nil {

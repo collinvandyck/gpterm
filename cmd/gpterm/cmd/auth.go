@@ -15,14 +15,14 @@ func Auth() *cobra.Command {
 	return &cobra.Command{
 		Use:   "auth",
 		Short: "Sets the OpenAPI key",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			ctx := context.Background()
 			fmt.Print("OpenAPI key: ")
 			s := bufio.NewScanner(os.Stdin)
 			s.Scan()
 			key := s.Text()
 			if key == "" {
-				return errors.New("No key supplied")
+				return errors.New("no key supplied")
 			}
 			store, err := gpterm.NewStore()
 			if err != nil {

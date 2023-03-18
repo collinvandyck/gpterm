@@ -19,3 +19,11 @@ type Message struct {
 	Role      string    `json:"role"`
 	Content   string    `json:"content"`
 }
+
+type Usage struct {
+	ID               int64     `json:"id"`
+	Timestamp        time.Time `json:"timestamp"`
+	PromptTokens     int64     `json:"prompt_tokens"`
+	CompletionTokens int64     `json:"completion_tokens"`
+	TotalTokens      int64     `json:"total_tokens"`
+}
