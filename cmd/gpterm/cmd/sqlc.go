@@ -2,9 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 
+	"github.com/collinvandyck/gpterm/lib/cmdkit"
 	"github.com/spf13/cobra"
 )
 
@@ -14,10 +14,7 @@ func sqlcCmd() *cobra.Command {
 		Short:   "Generates sqlc queries",
 		PreRunE: Deps().RunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			err := os.Chdir("db")
-			if err != nil {
-				return err
-			}
+			cmdkit.ChdirProject("db")
 			ec := exec.Command(
 				"sqlc",
 				"generate",
