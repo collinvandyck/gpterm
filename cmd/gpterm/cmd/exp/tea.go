@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	markdown "github.com/MichaelMure/go-term-markdown"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	markdown "github.com/collinvandyck/go-term-markdown"
 	"github.com/collinvandyck/gpterm"
 	"github.com/collinvandyck/gpterm/db/query"
 	"github.com/spf13/cobra"
@@ -270,7 +270,8 @@ func (l *lineBuilder) String() string {
 }
 
 func (l *lineBuilder) Write(line string) {
-	bs := markdown.Render(line, l.width, 1)
+	const leftpad = 0
+	bs := markdown.Render(line, l.width, leftpad)
 	//line = wordwrap.String(line, l.width)
 	line = string(bs)
 	line = strings.TrimSpace(line)
