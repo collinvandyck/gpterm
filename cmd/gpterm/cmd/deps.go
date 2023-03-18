@@ -25,6 +25,7 @@ func Deps() *cobra.Command {
 				"github.com/golang-migrate/migrate/v4/cmd/migrate",
 				"github.com/kyleconroy/sqlc/cmd/sqlc",
 				"golang.org/x/tools/cmd/stringer",
+				"github.com/charmbracelet/glow",
 			}
 			for _, pkg := range pkgs {
 				bin := filepath.Join(projectDir, "bin", filepath.Base(pkg))
