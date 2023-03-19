@@ -20,11 +20,8 @@ It's very much a work in progress and is under active development.
 	# enter repl
 	gpterm repl
 	
-# upcoming
+# contributing
 
-I've got a lot of things coming up, not limited to:
-
-- conversation persistence (no chat context is currently sent to the API)
-- markdown viewer
-- fzf integration
+It's too early to accept pull requests given how early this project is. Please feel free to file an issue if you
+found a bug or have a feature request.
 
