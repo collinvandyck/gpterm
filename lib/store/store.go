@@ -11,7 +11,6 @@ import (
 
 	"github.com/collinvandyck/gpterm/db"
 	"github.com/collinvandyck/gpterm/db/query"
-	"github.com/collinvandyck/gpterm/lib/client"
 	"github.com/collinvandyck/gpterm/lib/errs"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -72,10 +71,6 @@ func New(opts ...StoreOpt) (*Store, error) {
 		return nil, fmt.Errorf("init: %w", err)
 	}
 	return store, nil
-}
-
-func (s *Store) ChatContext() client.ChatContext {
-	return &chatContext{s}
 }
 
 func (s *Store) GetTotalUsage(ctx context.Context) (res query.Usage, err error) {

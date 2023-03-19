@@ -21,16 +21,17 @@ import (
 
 type chatModel struct {
 	uiOpts
-	viewport viewport.Model
-	textarea textarea.Model
-	spinner  spinner.Model
-	styles   styles
-
-	entries     []chatEntry
-	err         error
-	readyTerm   bool // when we are ready to render
-	readyHist   bool // true when history is loaded
-	readyClient bool // true when we are waiting for a client response
+	viewport        viewport.Model
+	textarea        textarea.Model
+	spinner         spinner.Model
+	styles          styles
+	entries         []chatEntry
+	err             error
+	readyTerm       bool          // when we are ready to render
+	readyHist       bool          // true when history is loaded
+	readyClient     bool          // true when we are waiting for a client response
+	ctxCount        int           // how many messages to send for context
+	completeTimeout time.Duration // how long to wait for complete request
 }
 
 type chatEntry struct {
@@ -42,12 +43,15 @@ func newChatModel(uiOpts uiOpts) chatModel {
 	spin := spinner.New()
 	spin.Spinner = spinner.Dot
 	spin.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	return chatModel{
-		uiOpts:      uiOpts,
-		readyClient: true,
-		spinner:     spin,
-		styles:      newStaticStyles(),
+	res := chatModel{
+		uiOpts:          uiOpts,
+		readyClient:     true,
+		spinner:         spin,
+		styles:          newStaticStyles(),
+		ctxCount:        5,
+		completeTimeout: 30 * time.Second,
 	}
+	return res
 }
 
 func (m chatModel) Init() tea.Cmd {
@@ -60,22 +64,29 @@ func (m chatModel) Init() tea.Cmd {
 
 func (m chatModel) sendMessage(msg string) tea.Cmd {
 	return func() tea.Msg {
-		m.Info("Sending message")
+		start := time.Now()
 		ctx, cancel := m.clientContext()
 		defer cancel()
-		res, err := m.client.Complete(ctx, msg)
+		latest, err := m.store.GetLastMessages(ctx, m.ctxCount)
 		if err != nil {
-			m.Error("Failed to complete text: %v", err)
-			return messageResponses{err: err}
+			return completion{err: fmt.Errorf("load context: %w", err)}
 		}
-		m.Info("Got %d message responses", len(res.Response.Choices))
-		return messageResponses{res.Response.Choices, err}
+		res, err := m.client.Complete(ctx, latest, msg)
+		if err != nil {
+			return completion{err: fmt.Errorf("failed to complete: %w", err)}
+		}
+		err = m.store.SaveRequestResponse(ctx, res.Req, res.Response)
+		if err != nil {
+			return completion{err: fmt.Errorf("store resp: %w", err)}
+		}
+		dur := time.Since(start).Truncate(time.Millisecond)
+		m.Info("Completion request completed in %s (%d context)", dur, m.ctxCount)
+		return completion{res.Response.Choices, err}
 	}
 }
 
 func (m chatModel) loadHistory() tea.Cmd {
 	return func() tea.Msg {
-		m.Info("Loading history")
 		ctx, cancel := m.clientContext()
 		defer cancel()
 		msgs, err := m.store.GetLastMessages(ctx, 50)
@@ -85,10 +96,11 @@ func (m chatModel) loadHistory() tea.Cmd {
 }
 
 func (m chatModel) clientContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 1*time.Minute)
+	ctx := context.Background()
+	return context.WithTimeout(ctx, m.completeTimeout)
 }
 
-type messageResponses struct {
+type completion struct {
 	choices []openai.ChatCompletionChoice
 	err     error
 }
@@ -131,6 +143,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.SetContent("No conversations yet")
 			m.textarea.KeyMap.InsertNewline.SetEnabled(false)
 			m.readyTerm = true
+			m.Info("Term is ready")
 		}
 		m.viewport.Width = vpWidth
 		m.viewport.Height = vpHeight
@@ -139,7 +152,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateViewport()
 
 	case messageHistory:
-		m.Info("Got message history update %d messages err=%v", len(msg.messages), msg.err)
+		m.Info("Loaded %d historic messages", len(msg.messages))
 		for _, qm := range msg.messages {
 			m.entries = append(m.entries, chatEntry{msg: qm})
 		}
@@ -149,8 +162,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.readyHist = true
 		m.updateViewport()
 
-	case messageResponses:
-		m.Info("Got %d message responses err=%v", len(msg.choices), msg.err)
+	case completion:
 		for _, choice := range msg.choices {
 			m.entries = append(m.entries, chatEntry{
 				msg: query.Message{
@@ -167,7 +179,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.readyClient = true
 
 	case tea.KeyMsg:
-		m.Info("Got key: %s", msg.String())
 		switch msg.Type {
 
 		// quit
@@ -209,7 +220,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch mtyp {
 		case "cursor.blinkCanceled":
 		default:
-			m.Info("%T %v", msg, msg)
+			// m.Info("%T %v", msg, msg)
 		}
 	}
 	return m, tea.Batch(taCmd, vpCmd, sendCmd, spinCmd)

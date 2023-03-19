@@ -34,7 +34,7 @@ func Repl() *cobra.Command {
 				fmt.Fprintln(os.Stderr, fmt.Sprintf("%s auth", cmd.Root().Use))
 				os.Exit(1)
 			}
-			client, err := client.New(key, client.WithChatContext(store.ChatContext()))
+			client, err := client.New(key)
 			if err != nil {
 				return fmt.Errorf("new client: %w", err)
 			}
