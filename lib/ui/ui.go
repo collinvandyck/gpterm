@@ -25,6 +25,7 @@ func Start(ctx context.Context, store *store.Store, client client.Client, opts .
 		store:     store,
 		client:    client,
 		logWriter: io.Discard,
+		styles:    newStaticStyles(),
 	}
 	for _, o := range opts {
 		o(console)
@@ -38,6 +39,7 @@ type console struct {
 	width     int
 	height    int
 	logWriter io.Writer
+	styles    styles
 }
 
 func (t *console) run(ctx context.Context) error {
@@ -67,22 +69,20 @@ type chatEntry struct {
 }
 
 type chatModel struct {
-	t           *console
-	vp          viewport.Model
-	ta          textarea.Model
-	senderStyle lipgloss.Style
-	entries     []chatEntry
-	err         error
-	readyTerm   bool // when we are ready to render
-	readyHist   bool // true when history is loaded
+	console   *console
+	vp        viewport.Model
+	ta        textarea.Model
+	entries   []chatEntry
+	err       error
+	readyTerm bool // when we are ready to render
+	readyHist bool // true when history is loaded
 }
 
 // https://github.com/charmbracelet/bubbletea/blob/master/examples/pager/main.go
 // https://github.com/charmbracelet/bubbles
-func newChatModel(t *console) chatModel {
+func newChatModel(console *console) chatModel {
 	return chatModel{
-		t:           t,
-		senderStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("5")),
+		console: console,
 	}
 }
 
@@ -94,7 +94,7 @@ func (m chatModel) Init() tea.Cmd {
 }
 
 func (m chatModel) log(msg string, args ...any) {
-	m.t.log(msg, args...)
+	m.console.log(msg, args...)
 }
 
 func (m chatModel) sendMessage(msg string) tea.Cmd {
@@ -102,7 +102,7 @@ func (m chatModel) sendMessage(msg string) tea.Cmd {
 		m.log("Sending message")
 		ctx, cancel := m.clientContext()
 		defer cancel()
-		res, err := m.t.client.Complete(ctx, msg)
+		res, err := m.console.client.Complete(ctx, msg)
 		if err != nil {
 			m.log("Failed to complete text: %v", err)
 			return messageResponses{err: err}
@@ -117,7 +117,7 @@ func (m chatModel) loadHistory() tea.Cmd {
 		m.log("Loading history")
 		ctx, cancel := m.clientContext()
 		defer cancel()
-		msgs, err := m.t.store.GetLastMessages(ctx, 50)
+		msgs, err := m.console.store.GetLastMessages(ctx, 50)
 		m.log("Loaded %d messages err=%v", len(msgs), err)
 		return messageHistory{msgs, err}
 	}
@@ -257,7 +257,7 @@ func (m *chatModel) updateViewport() {
 	m.log("Updating viewport entries=%d", len(m.entries))
 	b := lineBuilder{width: m.vp.Width}
 	for i, entry := range m.entries {
-		b.Write(m.senderStyle.Render(entry.msg.Role))
+		b.Write("*" + m.console.styles.Role(entry.msg.Role) + "*")
 		if entry.err != nil {
 			b.Write("error: " + entry.err.Error())
 		} else {
