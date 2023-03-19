@@ -1,7 +1,3 @@
-.PHONY: build
-build:
-	go build -o bin/gpterm ./cmd/gpterm
-
 .PHONY: install
 install:
 	go install ./cmd/gpterm
