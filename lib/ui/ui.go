@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/cursor"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,49 +16,49 @@ import (
 	markdown "github.com/collinvandyck/go-term-markdown"
 	"github.com/collinvandyck/gpterm/db/query"
 	"github.com/collinvandyck/gpterm/lib/client"
+	"github.com/collinvandyck/gpterm/lib/log"
 	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/sashabaranov/go-openai"
 )
 
-// Start engages the terminal UI
-func Start(ctx context.Context, store *store.Store, client client.Client, opts ...Option) error {
+type UI interface {
+	// blocks until the program exits
+	Run(ctx context.Context) error
+}
+
+func New(store *store.Store, client client.Client, opts ...Option) UI {
 	console := &console{
-		store:     store,
-		client:    client,
-		logWriter: io.Discard,
-		styles:    newStaticStyles(),
+		Logger: log.Discard,
+		store:  store,
+		client: client,
+		styles: newStaticStyles(),
 	}
 	for _, o := range opts {
 		o(console)
 	}
-	return console.run(ctx)
+	return console
 }
 
 type console struct {
-	store     *store.Store
-	client    client.Client
-	width     int
-	height    int
-	logWriter io.Writer
-	styles    styles
+	log.Logger
+	store  *store.Store
+	client client.Client
+	styles styles
 }
 
-func (t *console) run(ctx context.Context) error {
-	t.log("Starting")
-	defer t.log("Exiting")
+func (t *console) Run(ctx context.Context) error {
+	t.Info("Starting")
+	defer t.Info("Exiting")
 	model, err := t.chatModel()
 	if err != nil {
 		return err
 	}
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	p := tea.NewProgram(model,
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion())
 	_, err = p.Run()
 	return err
-}
-
-func (t *console) log(msg string, args ...any) {
-	fmt.Fprintf(t.logWriter, msg, args...)
-	fmt.Fprint(t.logWriter, "\n")
 }
 
 func (t *console) chatModel() (tea.Model, error) {
@@ -70,9 +71,12 @@ type chatEntry struct {
 }
 
 type chatModel struct {
-	console     *console
-	viewport    viewport.Model
-	textarea    textarea.Model
+	log.Logger
+	console  *console
+	viewport viewport.Model
+	textarea textarea.Model
+	spinner  spinner.Model
+
 	entries     []chatEntry
 	err         error
 	readyTerm   bool // when we are ready to render
@@ -83,9 +87,14 @@ type chatModel struct {
 // https://github.com/charmbracelet/bubbletea/blob/master/examples/pager/main.go
 // https://github.com/charmbracelet/bubbles
 func newChatModel(console *console) chatModel {
+	spin := spinner.New()
+	spin.Spinner = spinner.Dot
+	spin.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 	return chatModel{
+		Logger:      console.Logger,
 		console:     console,
 		readyClient: true,
+		spinner:     spin,
 	}
 }
 
@@ -93,35 +102,32 @@ func (m chatModel) Init() tea.Cmd {
 	return tea.Batch(
 		textarea.Blink,
 		m.loadHistory(),
+		m.spinner.Tick,
 	)
-}
-
-func (m chatModel) log(msg string, args ...any) {
-	m.console.log(msg, args...)
 }
 
 func (m chatModel) sendMessage(msg string) tea.Cmd {
 	return func() tea.Msg {
-		m.log("Sending message")
+		m.Info("Sending message")
 		ctx, cancel := m.clientContext()
 		defer cancel()
 		res, err := m.console.client.Complete(ctx, msg)
 		if err != nil {
-			m.log("Failed to complete text: %v", err)
+			m.Error("Failed to complete text: %v", err)
 			return messageResponses{err: err}
 		}
-		m.log("Got %d message responses", len(res.Response.Choices))
+		m.Info("Got %d message responses", len(res.Response.Choices))
 		return messageResponses{res.Response.Choices, err}
 	}
 }
 
 func (m chatModel) loadHistory() tea.Cmd {
 	return func() tea.Msg {
-		m.log("Loading history")
+		m.Info("Loading history")
 		ctx, cancel := m.clientContext()
 		defer cancel()
 		msgs, err := m.console.store.GetLastMessages(ctx, 50)
-		m.log("Loaded %d messages err=%v", len(msgs), err)
+		m.Info("Loaded %d messages err=%v", len(msgs), err)
 		return messageHistory{msgs, err}
 	}
 }
@@ -145,14 +151,16 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		taCmd   tea.Cmd
 		vpCmd   tea.Cmd
 		sendCmd tea.Cmd
+		spinCmd tea.Cmd
 	)
 	m.textarea, taCmd = m.textarea.Update(msg)
+	m.spinner, spinCmd = m.spinner.Update(msg)
 
 	switch msg := msg.(type) {
 
 	// we have our dimensions. set up the viewport etc.
 	case tea.WindowSizeMsg:
-		m.log("Window size changed: %#+v", msg)
+		m.Info("Window size changed: %#+v", msg)
 		var (
 			taWidth  = msg.Width
 			taHeight = 3
@@ -179,7 +187,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateViewport()
 
 	case messageHistory:
-		m.log("Got message history update %d messages err=%v", len(msg.messages), msg.err)
+		m.Info("Got message history update %d messages err=%v", len(msg.messages), msg.err)
 		for _, qm := range msg.messages {
 			m.entries = append(m.entries, chatEntry{msg: qm})
 		}
@@ -190,7 +198,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateViewport()
 
 	case messageResponses:
-		m.log("Got %d message responses err=%v", len(msg.choices), msg.err)
+		m.Info("Got %d message responses err=%v", len(msg.choices), msg.err)
 		for _, choice := range msg.choices {
 			m.entries = append(m.entries, chatEntry{
 				msg: query.Message{
@@ -207,7 +215,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.readyClient = true
 
 	case tea.KeyMsg:
-		m.log("Got key: %s", msg.String())
+		m.Info("Got key: %s", msg.String())
 		switch msg.Type {
 
 		// quit
@@ -215,7 +223,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case tea.KeyUp, tea.KeyDown:
-			m.viewport, vpCmd = m.viewport.Update(msg)
 
 		// send a message
 		case tea.KeyEnter:
@@ -237,9 +244,19 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.textarea.Reset()
 			m.readyClient = false
 		}
+	case tea.MouseMsg:
+		m.viewport, vpCmd = m.viewport.Update(msg)
+	case spinner.TickMsg:
+	case cursor.BlinkMsg:
 	default:
+		mtyp := fmt.Sprintf("%T", msg)
+		switch mtyp {
+		case "cursor.blinkCanceled":
+		default:
+			m.Info("%T %v", msg, msg)
+		}
 	}
-	return m, tea.Batch(taCmd, vpCmd, sendCmd)
+	return m, tea.Batch(taCmd, vpCmd, sendCmd, spinCmd)
 }
 
 type lineBuilder struct {
@@ -266,7 +283,7 @@ func (l *lineBuilder) Write(line string, md bool) {
 
 // updates the viewport with the model's current entries
 func (m *chatModel) updateViewport() {
-	m.log("Updating viewport entries=%d", len(m.entries))
+	m.Info("Updating viewport entries=%d", len(m.entries))
 	b := lineBuilder{width: m.viewport.Width}
 	for i, entry := range m.entries {
 		b.Write(m.console.styles.Role(entry.msg.Role), false)
@@ -290,7 +307,11 @@ func (m chatModel) View() string {
 	var res string
 	res += m.viewport.View()
 	res += "\n"
-	res += m.textarea.View()
+	if !m.readyClient {
+		res += m.spinner.View()
+	} else {
+		res += m.textarea.View()
+	}
 	res += "\n"
 	return res
 }

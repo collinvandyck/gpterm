@@ -11,6 +11,7 @@ import (
 
 	"github.com/collinvandyck/gpterm/db"
 	"github.com/collinvandyck/gpterm/lib/git"
+	"github.com/collinvandyck/gpterm/lib/log"
 	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
@@ -37,7 +38,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			ec := exec.Command("migrate", "create", "-ext", "sql", "-dir", "migrations", "-seq", args[0])
 			out, err := ec.CombinedOutput()
 			if err != nil {
-				fmt.Fprintln(os.Stderr, string(out))
+				log.Error(string(out))
 				return err
 			}
 			return nil
@@ -60,7 +61,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Println("Migrating up")
+			log.Info("Migrating up")
 			err = mg.Up()
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):
@@ -87,7 +88,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Println("Migrating down")
+			log.Info("Migrating down")
 			err = mg.Down()
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):
@@ -119,7 +120,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Println("Stepping", n)
+			log.Info("Stepping", n)
 			err = mg.Steps(int(n))
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):

@@ -1,11 +1,13 @@
 package ui
 
-import "io"
+import (
+	"github.com/collinvandyck/gpterm/lib/log"
+)
 
 type Option func(*console)
 
-func WithLogWriter(w io.Writer) Option {
+func WithLogger(logger log.Logger) Option {
 	return func(c *console) {
-		c.logWriter = w
+		c.Logger = logger
 	}
 }

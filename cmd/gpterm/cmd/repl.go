@@ -3,10 +3,10 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/collinvandyck/gpterm/lib/client"
+	"github.com/collinvandyck/gpterm/lib/log"
 	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/collinvandyck/gpterm/lib/ui"
 	"github.com/spf13/cobra"
@@ -38,16 +38,17 @@ func Repl() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("new client: %w", err)
 			}
-			logger := io.Discard
+			logger := log.Discard
 			if logfile != "" {
 				f, err := os.Create(logfile)
 				if err != nil {
 					return err
 				}
 				defer f.Close()
-				logger = f
+				logger = log.New(log.WithStdout(f), log.WithStderr(f))
 			}
-			return ui.Start(ctx, store, client, ui.WithLogWriter(logger))
+			ui := ui.New(store, client, ui.WithLogger(logger))
+			return ui.Run(ctx)
 		},
 	}
 	cmd.Flags().StringVar(&logfile, "log", "", "log to this file")

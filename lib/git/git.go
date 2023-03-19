@@ -1,16 +1,17 @@
 package git
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/collinvandyck/gpterm/lib/log"
 )
 
 func MustProjectDir() string {
 	dir, err := ProjectDir()
 	if err != nil {
-		fmt.Println("No project dir detected")
+		log.Error("No project dir detected")
 		os.Exit(1)
 	}
 	return dir
