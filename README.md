@@ -12,10 +12,6 @@ It's very much a work in progress and is under active development.
 	cd gpterm
 	make install
 
-## go toolchain
-
-	go install github.com/collinvandyck/gpterm/cmd/gpterm@latest
-
 # usage
 
 	# set api key
