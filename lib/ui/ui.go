@@ -15,10 +15,12 @@ import (
 	markdown "github.com/collinvandyck/go-term-markdown"
 	"github.com/collinvandyck/gpterm"
 	"github.com/collinvandyck/gpterm/db/query"
+	"github.com/collinvandyck/gpterm/lib/client"
+	"github.com/sashabaranov/go-openai"
 )
 
 // Start engages the terminal UI
-func Start(ctx context.Context, store *gpterm.Store, client *gpterm.Client, opts ...Option) error {
+func Start(ctx context.Context, store *gpterm.Store, client client.Client, opts ...Option) error {
 	console := &console{
 		store:     store,
 		client:    client,
@@ -32,7 +34,7 @@ func Start(ctx context.Context, store *gpterm.Store, client *gpterm.Client, opts
 
 type console struct {
 	store     *gpterm.Store
-	client    *gpterm.Client
+	client    client.Client
 	width     int
 	height    int
 	logWriter io.Writer
@@ -100,9 +102,13 @@ func (m chatModel) sendMessage(msg string) tea.Cmd {
 		m.log("Sending message")
 		ctx, cancel := m.clientContext()
 		defer cancel()
-		responses, err := m.t.client.Complete(ctx, msg)
-		m.log("Got %d message responses err=%v", len(responses), err)
-		return messageResponses{responses, err}
+		res, err := m.t.client.Complete(ctx, msg)
+		if err != nil {
+			m.log("Failed to complete text: %v", err)
+			return messageResponses{err: err}
+		}
+		m.log("Got %d message responses", len(res.Response.Choices))
+		return messageResponses{res.Response.Choices, err}
 	}
 }
 
@@ -122,8 +128,8 @@ func (m chatModel) clientContext() (context.Context, context.CancelFunc) {
 }
 
 type messageResponses struct {
-	responses []string
-	err       error
+	choices []openai.ChatCompletionChoice
+	err     error
 }
 
 type messageHistory struct {
@@ -181,12 +187,12 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateViewport()
 
 	case messageResponses:
-		m.log("Got %d message responses err=%v", len(msg.responses), msg.err)
-		for _, mr := range msg.responses {
+		m.log("Got %d message responses err=%v", len(msg.choices), msg.err)
+		for _, choice := range msg.choices {
 			m.entries = append(m.entries, chatEntry{
 				msg: query.Message{
-					Role:    "assistant",
-					Content: mr,
+					Role:    choice.Message.Role,
+					Content: choice.Message.Content,
 				},
 			})
 		}

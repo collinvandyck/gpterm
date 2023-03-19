@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/collinvandyck/gpterm"
+	"github.com/collinvandyck/gpterm/lib/client"
 	"github.com/collinvandyck/gpterm/lib/ui"
 	"github.com/spf13/cobra"
 )
@@ -33,11 +34,10 @@ func Repl() *cobra.Command {
 				fmt.Fprintln(os.Stderr, fmt.Sprintf("%s auth", cmd.Root().Use))
 				os.Exit(1)
 			}
-			client, err := gpterm.NewClient(ctx, store)
+			client, err := client.New(key) // todo: add store context
 			if err != nil {
 				return err
 			}
-			defer client.Close()
 			logger := io.Discard
 			if logfile != "" {
 				f, err := os.Create(logfile)
