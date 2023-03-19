@@ -62,7 +62,10 @@ func (m chatModel) Init() tea.Cmd {
 	)
 }
 
-func (m chatModel) sendMessage(msg string) tea.Cmd {
+// complete takes the user input and executes a completion request
+// against the client. A completion value will be sent back to the
+// ui routine.
+func (m chatModel) complete(msg string) tea.Cmd {
 	return func() tea.Msg {
 		start := time.Now()
 		ctx, cancel := m.clientContext()
@@ -148,7 +151,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Height = vpHeight
 		m.textarea.SetWidth(taWidth)
 		m.textarea.SetHeight(taHeight)
-		m.updateViewport()
+		m.renderViewport()
 
 	case messageHistory:
 		m.Info("Loaded %d historic messages", len(msg.messages))
@@ -159,7 +162,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.entries = append(m.entries, chatEntry{err: msg.err})
 		}
 		m.readyHist = true
-		m.updateViewport()
+		m.renderViewport()
 
 	case completion:
 		for _, choice := range msg.choices {
@@ -174,7 +177,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.entries = append(m.entries, chatEntry{err: msg.err})
 		}
 		m.readyHist = true
-		m.updateViewport()
+		m.renderViewport()
 		m.readyClient = true
 
 	case tea.KeyMsg:
@@ -204,8 +207,8 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Content: m.textarea.Value(),
 					},
 				})
-				sendCmd = m.sendMessage(m.textarea.Value())
-				m.updateViewport()
+				sendCmd = m.complete(m.textarea.Value())
+				m.renderViewport()
 			}
 			m.textarea.Reset()
 			m.readyClient = false
@@ -247,9 +250,10 @@ func (l *lineBuilder) Write(line string, md bool) {
 	l.buffer.WriteString("\n")
 }
 
-// updates the viewport with the model's current entries
-func (m *chatModel) updateViewport() {
-	m.Info("Updating viewport (%d entries)", len(m.entries))
+// When the underlying messages change, this method will render
+// those messages into the viewport.
+func (m *chatModel) renderViewport() {
+	m.Info("Render viewport (%d entries)", len(m.entries))
 	b := lineBuilder{width: m.viewport.Width}
 	for i, entry := range m.entries {
 		b.Write(m.styles.Role(entry.msg.Role), false)
