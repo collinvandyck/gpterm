@@ -16,6 +16,7 @@ import (
 	"github.com/collinvandyck/gpterm/db/query"
 	"github.com/collinvandyck/gpterm/lib/client"
 	"github.com/collinvandyck/gpterm/lib/store"
+	"github.com/muesli/reflow/wordwrap"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -69,20 +70,22 @@ type chatEntry struct {
 }
 
 type chatModel struct {
-	console   *console
-	vp        viewport.Model
-	ta        textarea.Model
-	entries   []chatEntry
-	err       error
-	readyTerm bool // when we are ready to render
-	readyHist bool // true when history is loaded
+	console     *console
+	viewport    viewport.Model
+	textarea    textarea.Model
+	entries     []chatEntry
+	err         error
+	readyTerm   bool // when we are ready to render
+	readyHist   bool // true when history is loaded
+	readyClient bool // true when we are waiting for a client response
 }
 
 // https://github.com/charmbracelet/bubbletea/blob/master/examples/pager/main.go
 // https://github.com/charmbracelet/bubbles
 func newChatModel(console *console) chatModel {
 	return chatModel{
-		console: console,
+		console:     console,
+		readyClient: true,
 	}
 }
 
@@ -143,7 +146,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		vpCmd   tea.Cmd
 		sendCmd tea.Cmd
 	)
-	m.ta, taCmd = m.ta.Update(msg)
+	m.textarea, taCmd = m.textarea.Update(msg)
 
 	switch msg := msg.(type) {
 
@@ -157,22 +160,22 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			vpHeight = msg.Height - taHeight - 1
 		)
 		if !m.readyTerm {
-			m.ta = textarea.New()
-			m.ta.Placeholder = "Send a message..."
-			m.ta.Focus()
-			m.ta.Prompt = "┃ "
-			m.ta.CharLimit = 280
-			m.ta.FocusedStyle.CursorLine = lipgloss.NewStyle() // Remove cursor line styling
-			m.ta.ShowLineNumbers = false
-			m.vp = viewport.New(vpWidth, vpHeight)
-			m.vp.SetContent("No conversations yet")
-			m.ta.KeyMap.InsertNewline.SetEnabled(false)
+			m.textarea = textarea.New()
+			m.textarea.Placeholder = "Send a message..."
+			m.textarea.Focus()
+			m.textarea.Prompt = "┃ "
+			m.textarea.CharLimit = 280
+			m.textarea.FocusedStyle.CursorLine = lipgloss.NewStyle() // Remove cursor line styling
+			m.textarea.ShowLineNumbers = false
+			m.viewport = viewport.New(vpWidth, vpHeight)
+			m.viewport.SetContent("No conversations yet")
+			m.textarea.KeyMap.InsertNewline.SetEnabled(false)
 			m.readyTerm = true
 		}
-		m.vp.Width = vpWidth
-		m.vp.Height = vpHeight
-		m.ta.SetWidth(taWidth)
-		m.ta.SetHeight(taHeight)
+		m.viewport.Width = vpWidth
+		m.viewport.Height = vpHeight
+		m.textarea.SetWidth(taWidth)
+		m.textarea.SetHeight(taHeight)
 		m.updateViewport()
 
 	case messageHistory:
@@ -201,6 +204,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.readyHist = true
 		m.updateViewport()
+		m.readyClient = true
 
 	case tea.KeyMsg:
 		m.log("Got key: %s", msg.String())
@@ -211,22 +215,27 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case tea.KeyUp, tea.KeyDown:
-			m.vp, vpCmd = m.vp.Update(msg)
+			m.viewport, vpCmd = m.viewport.Update(msg)
 
 		// send a message
 		case tea.KeyEnter:
-			text := strings.TrimSpace(m.ta.Value())
+			if !m.readyClient {
+				// there's a client request in flight. wait for it
+				break
+			}
+			text := strings.TrimSpace(m.textarea.Value())
 			if text != "" {
 				m.entries = append(m.entries, chatEntry{
 					msg: query.Message{
 						Role:    "user",
-						Content: m.ta.Value(),
+						Content: m.textarea.Value(),
 					},
 				})
-				sendCmd = m.sendMessage(m.ta.Value())
+				sendCmd = m.sendMessage(m.textarea.Value())
 				m.updateViewport()
 			}
-			m.ta.Reset()
+			m.textarea.Reset()
+			m.readyClient = false
 		}
 	default:
 	}
@@ -242,11 +251,14 @@ func (l *lineBuilder) String() string {
 	return l.buffer.String()
 }
 
-func (l *lineBuilder) Write(line string) {
+func (l *lineBuilder) Write(line string, md bool) {
 	const leftpad = 0
-	bs := markdown.Render(line, l.width, leftpad)
-	//line = wordwrap.String(line, l.width)
-	line = string(bs)
+	if md {
+		bs := markdown.Render(line, l.width, leftpad)
+		line = string(bs)
+	} else {
+		line = wordwrap.String(line, l.width)
+	}
 	line = strings.TrimSpace(line)
 	l.buffer.WriteString(line)
 	l.buffer.WriteString("\n")
@@ -255,20 +267,20 @@ func (l *lineBuilder) Write(line string) {
 // updates the viewport with the model's current entries
 func (m *chatModel) updateViewport() {
 	m.log("Updating viewport entries=%d", len(m.entries))
-	b := lineBuilder{width: m.vp.Width}
+	b := lineBuilder{width: m.viewport.Width}
 	for i, entry := range m.entries {
-		b.Write("*" + m.console.styles.Role(entry.msg.Role) + "*")
+		b.Write(m.console.styles.Role(entry.msg.Role), false)
 		if entry.err != nil {
-			b.Write("error: " + entry.err.Error())
+			b.Write("error: "+entry.err.Error(), false)
 		} else {
-			b.Write(entry.msg.Content)
+			b.Write(entry.msg.Content, true)
 		}
 		if i < len(m.entries)-1 {
-			b.Write("")
+			b.Write("", false)
 		}
 	}
-	m.vp.SetContent(b.String())
-	m.vp.GotoBottom()
+	m.viewport.SetContent(b.String())
+	m.viewport.GotoBottom()
 }
 
 func (m chatModel) View() string {
@@ -276,9 +288,9 @@ func (m chatModel) View() string {
 		return ""
 	}
 	var res string
-	res += m.vp.View()
+	res += m.viewport.View()
 	res += "\n"
-	res += m.ta.View()
+	res += m.textarea.View()
 	res += "\n"
 	return res
 }

@@ -13,16 +13,22 @@ type staticStyles struct {
 }
 
 func newStaticStyles() staticStyles {
+	senderStyle := func(color lipgloss.Color) lipgloss.Style {
+		return lipgloss.NewStyle().
+			Bold(true).
+			Underline(true).
+			Foreground(color)
+	}
 	return staticStyles{
 		senders: map[string]lipgloss.Style{
-			"user":      lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2")).Underline(true),
-			"assistant": lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4")).Underline(true),
+			"user":      senderStyle(lipgloss.Color("2")),
+			"assistant": senderStyle(lipgloss.Color("4")),
 		},
 		names: map[string]string{
 			"user":      "You",
 			"assistant": "ChatGPT",
 		},
-		defaultStyle: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3")).Underline(true),
+		defaultStyle: senderStyle(lipgloss.Color("3")),
 	}
 }
 
