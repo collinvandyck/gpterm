@@ -42,6 +42,27 @@ While OpenAPI is incredibly cheap at the moment, it's not totally free. You can 
 	Total:      78483
 	Cost:       $0.16 ($0.002 per 1K tokens)
 	
+# Upcoming
+
+## Conversation Support
+
+Currently all message history is stored without a conversation namespace. Adding conversations will allow you to
+start a new conversation, or jump back to an existing one.
+
+## Configurable Roles
+
+Users will be able to instruct OpenAPI how to act. Currently it's hardcoded to `You are a helpful assistant.`
+
+Additionally, users should be able to change the name of the assistant as rendered in the chatlog. Current it is `ChatGPT`.
+
+## Gist Support
+
+Conversations should be able to be uploaded to a gist.
+
+## Hotkey Support
+
+Actions should be able to be found to user-configured keys.
+
 # Contributing
 
 It's too early to accept pull requests given how early this project is. Please feel free to file an issue if you
