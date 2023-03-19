@@ -31,6 +31,9 @@ Once the API key has been set, have fun!
 	# enter an interactive session
 	gpterm
 
+Note that there are other subcommand attached to the `gpterm` command. Those are meant for development and are
+not useful outside of the repo.
+
 # Usage Stats
 
 While OpenAPI is incredibly cheap at the moment, it's not totally free. You can view your usage at any time:

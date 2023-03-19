@@ -32,14 +32,14 @@ func (q *Queries) GetPromptTokens(ctx context.Context) (float64, error) {
 }
 
 const getTotalTokens = `-- name: GetTotalTokens :one
-SELECT total(total_tokens) as integer from usage
+SELECT total(total_tokens) from usage
 `
 
 func (q *Queries) GetTotalTokens(ctx context.Context) (float64, error) {
 	row := q.queryRow(ctx, q.getTotalTokensStmt, getTotalTokens)
-	var integer float64
-	err := row.Scan(&integer)
-	return integer, err
+	var total float64
+	err := row.Scan(&total)
+	return total, err
 }
 
 const insertUsage = `-- name: InsertUsage :exec
