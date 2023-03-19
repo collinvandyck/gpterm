@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strings"
@@ -13,9 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	markdown "github.com/collinvandyck/go-term-markdown"
 	"github.com/collinvandyck/gpterm/db/query"
-	"github.com/muesli/reflow/wordwrap"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -27,7 +24,8 @@ type chatModel struct {
 	uiOpts
 	viewport        viewport.Model
 	textarea        textarea.Model
-	spinner         spinner.Model
+	spinner         tea.Model
+	render          render
 	styles          styles
 	chatlog         chatlog
 	err             error
@@ -44,15 +42,13 @@ type chatEntry struct {
 }
 
 func newChatModel(uiOpts uiOpts) chatModel {
-	spin := spinner.New()
-	spin.Spinner = spinner.Dot
-	spin.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 	res := chatModel{
 		uiOpts:          uiOpts,
-		chatlog:         newChatlog(defaultChatlogMaxSize),
-		readyClient:     true,
-		spinner:         spin,
+		chatlog:         newChatlog(defaultChatlogMaxSize, uiOpts),
 		styles:          newStaticStyles(),
+		render:          newRender(newStaticStyles()),
+		spinner:         newSpinner(uiOpts),
+		readyClient:     true,
 		ctxCount:        5,
 		completeTimeout: 30 * time.Second,
 	}
@@ -63,7 +59,7 @@ func (m chatModel) Init() tea.Cmd {
 	return tea.Batch(
 		textarea.Blink,
 		m.loadHistory(),
-		m.spinner.Tick,
+		m.spinner.Init(),
 	)
 }
 
@@ -140,7 +136,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 		if !m.readyTerm {
 			m.textarea = textarea.New()
-			m.textarea.Placeholder = ""
+			m.textarea.Placeholder = "..."
 			m.textarea.Focus()
 			m.textarea.Prompt = "┃ "
 			m.textarea.CharLimit = 280
@@ -156,18 +152,21 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Height = vpHeight
 		m.textarea.SetWidth(taWidth)
 		m.textarea.SetHeight(taHeight)
+		m.render.setWidth(vpWidth)
 		m.renderViewport()
+		m.viewport.GotoBottom()
 
 	case messageHistory:
 		m.Info("Loaded %d historic messages", len(msg.messages))
 		m.chatlog.addAll(msg.messages, msg.err)
-		m.readyHist = true
 		m.renderViewport()
+		m.viewport.GotoBottom()
+		m.readyHist = true
 
 	case completion:
 		m.chatlog.addCompletion(msg.choices, msg.err)
-		m.readyHist = true
 		m.renderViewport()
+		m.viewport.GotoBottom()
 		m.readyClient = true
 
 	case tea.KeyMsg:
@@ -198,10 +197,18 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			sendCmd = m.complete(m.textarea.Value())
 			m.textarea.Reset()
 			m.readyClient = false
+			m.viewport.GotoBottom()
+
+		case tea.KeyCtrlV:
+			m.Info("paste")
+		case tea.KeyCtrlG:
+			// we'll start off using ctrl-g for inline menu
+			m.Info("ctrl-g")
 		}
 	case tea.MouseMsg:
 		m.viewport, vpCmd = m.viewport.Update(msg)
 	case spinner.TickMsg:
+		m.renderViewport()
 	case cursor.BlinkMsg:
 	default:
 		mtyp := fmt.Sprintf("%T", msg)
@@ -214,46 +221,13 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(taCmd, vpCmd, sendCmd, spinCmd)
 }
 
-type lineBuilder struct {
-	width  int
-	buffer bytes.Buffer
-}
-
-func (l *lineBuilder) String() string {
-	return l.buffer.String()
-}
-
-func (l *lineBuilder) Write(line string, md bool) {
-	const leftpad = 0
-	if md {
-		bs := markdown.Render(line, l.width, leftpad)
-		line = string(bs)
-	} else {
-		line = wordwrap.String(line, l.width)
-	}
-	line = strings.TrimSpace(line)
-	l.buffer.WriteString(line)
-	l.buffer.WriteString("\n")
-}
-
 // When the underlying messages change, this method will render
 // those messages into the viewport.
 func (m *chatModel) renderViewport() {
-	m.Info("Render viewport (%d entries)", len(m.chatlog.entries))
-	b := lineBuilder{width: m.viewport.Width}
-	for i, entry := range m.chatlog.entries {
-		b.Write(m.styles.Role(entry.Message.Role), false)
-		if entry.err != nil {
-			b.Write("error: "+entry.err.Error(), false)
-		} else {
-			b.Write(entry.Message.Content, true)
-		}
-		if i < len(m.chatlog.entries)-1 {
-			b.Write("", false)
-		}
+	rendered, ok := m.chatlog.render(m.render, m.spinner)
+	if ok {
+		m.viewport.SetContent(rendered)
 	}
-	m.viewport.SetContent(b.String())
-	m.viewport.GotoBottom()
 }
 
 func (m chatModel) View() string {
@@ -263,11 +237,7 @@ func (m chatModel) View() string {
 	var res string
 	res += m.viewport.View()
 	res += "\n"
-	if !m.readyClient {
-		res += m.spinner.View()
-	} else {
-		res += m.textarea.View()
-	}
+	res += m.textarea.View()
 	res += "\n"
 	return res
 }

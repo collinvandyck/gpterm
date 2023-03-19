@@ -23,10 +23,12 @@ func newStaticStyles() staticStyles {
 		senders: map[string]lipgloss.Style{
 			"user":      senderStyle(lipgloss.Color("2")),
 			"assistant": senderStyle(lipgloss.Color("4")),
+			"error":     senderStyle(lipgloss.Color("#ff0000")),
 		},
 		names: map[string]string{
 			"user":      "You",
 			"assistant": "ChatGPT",
+			"error":     "Error",
 		},
 		defaultStyle: senderStyle(lipgloss.Color("3")),
 	}
