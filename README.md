@@ -30,6 +30,17 @@ Once the API key has been set, have fun!
 
 	# enter an interactive session
 	gpterm
+
+# Usage Stats
+
+While OpenAPI is incredibly cheap at the moment, it's not totally free. You can view your usage at any time:
+
+	❯ gpterm usage
+
+	Prompt:     58761
+	Completion: 19722
+	Total:      78483
+	Cost:       $0.16 ($0.002 per 1K tokens)
 	
 # Contributing
 
