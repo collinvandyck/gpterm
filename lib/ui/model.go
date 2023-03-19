@@ -90,7 +90,6 @@ func (m chatModel) loadHistory() tea.Cmd {
 		ctx, cancel := m.clientContext()
 		defer cancel()
 		msgs, err := m.store.GetLastMessages(ctx, 50)
-		m.Info("Loaded %d messages err=%v", len(msgs), err)
 		return messageHistory{msgs, err}
 	}
 }
