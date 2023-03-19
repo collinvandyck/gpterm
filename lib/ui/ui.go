@@ -197,11 +197,15 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.updateViewport()
 
 	case tea.KeyMsg:
+		m.log("Got key: %s", msg.String())
 		switch msg.Type {
 
 		// quit
 		case tea.KeyCtrlC, tea.KeyEsc, tea.KeyCtrlD:
 			return m, tea.Quit
+
+		case tea.KeyUp, tea.KeyDown:
+			m.vp, vpCmd = m.vp.Update(msg)
 
 		// send a message
 		case tea.KeyEnter:
@@ -219,7 +223,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ta.Reset()
 		}
 	default:
-		m.vp, vpCmd = m.vp.Update(msg)
 	}
 	return m, tea.Batch(taCmd, vpCmd, sendCmd)
 }
