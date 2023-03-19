@@ -29,7 +29,7 @@ func Usage() *cobra.Command {
 			fmt.Printf("Prompt:     %d\n", usage.PromptTokens)
 			fmt.Printf("Completion: %d\n", usage.CompletionTokens)
 			fmt.Printf("Total:      %d\n", usage.TotalTokens)
-			fmt.Printf("Cost:       $%0.003f ($0.002 per 1K tokens)\n", cost)
+			fmt.Printf("Cost:       $%0.02f ($0.002 per 1K tokens)\n", cost)
 
 			return nil
 		},
