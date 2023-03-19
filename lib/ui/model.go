@@ -19,13 +19,17 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
+const (
+	defaultChatlogMaxSize = 100
+)
+
 type chatModel struct {
 	uiOpts
 	viewport        viewport.Model
 	textarea        textarea.Model
 	spinner         spinner.Model
 	styles          styles
-	entries         []chatEntry
+	chatlog         chatlog
 	err             error
 	readyTerm       bool          // when we are ready to render
 	readyHist       bool          // true when history is loaded
@@ -45,6 +49,7 @@ func newChatModel(uiOpts uiOpts) chatModel {
 	spin.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 	res := chatModel{
 		uiOpts:          uiOpts,
+		chatlog:         newChatlog(defaultChatlogMaxSize),
 		readyClient:     true,
 		spinner:         spin,
 		styles:          newStaticStyles(),
@@ -92,7 +97,7 @@ func (m chatModel) loadHistory() tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := m.clientContext()
 		defer cancel()
-		msgs, err := m.store.GetLastMessages(ctx, 50)
+		msgs, err := m.store.GetLastMessages(ctx, m.chatlog.maxEntries)
 		return messageHistory{msgs, err}
 	}
 }
@@ -135,7 +140,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 		if !m.readyTerm {
 			m.textarea = textarea.New()
-			m.textarea.Placeholder = "Send a message..."
+			m.textarea.Placeholder = ""
 			m.textarea.Focus()
 			m.textarea.Prompt = "┃ "
 			m.textarea.CharLimit = 280
@@ -155,27 +160,12 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case messageHistory:
 		m.Info("Loaded %d historic messages", len(msg.messages))
-		for _, qm := range msg.messages {
-			m.entries = append(m.entries, chatEntry{msg: qm})
-		}
-		if msg.err != nil {
-			m.entries = append(m.entries, chatEntry{err: msg.err})
-		}
+		m.chatlog.addAll(msg.messages, msg.err)
 		m.readyHist = true
 		m.renderViewport()
 
 	case completion:
-		for _, choice := range msg.choices {
-			m.entries = append(m.entries, chatEntry{
-				msg: query.Message{
-					Role:    choice.Message.Role,
-					Content: choice.Message.Content,
-				},
-			})
-		}
-		if msg.err != nil {
-			m.entries = append(m.entries, chatEntry{err: msg.err})
-		}
+		m.chatlog.addCompletion(msg.choices, msg.err)
 		m.readyHist = true
 		m.renderViewport()
 		m.readyClient = true
@@ -200,16 +190,12 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 			text := strings.TrimSpace(m.textarea.Value())
-			if text != "" {
-				m.entries = append(m.entries, chatEntry{
-					msg: query.Message{
-						Role:    "user",
-						Content: m.textarea.Value(),
-					},
-				})
-				sendCmd = m.complete(m.textarea.Value())
-				m.renderViewport()
+			if text == "" {
+				break
 			}
+			m.chatlog.addUserPrompt(text)
+			m.renderViewport()
+			sendCmd = m.complete(m.textarea.Value())
 			m.textarea.Reset()
 			m.readyClient = false
 		}
@@ -253,16 +239,16 @@ func (l *lineBuilder) Write(line string, md bool) {
 // When the underlying messages change, this method will render
 // those messages into the viewport.
 func (m *chatModel) renderViewport() {
-	m.Info("Render viewport (%d entries)", len(m.entries))
+	m.Info("Render viewport (%d entries)", len(m.chatlog.entries))
 	b := lineBuilder{width: m.viewport.Width}
-	for i, entry := range m.entries {
-		b.Write(m.styles.Role(entry.msg.Role), false)
+	for i, entry := range m.chatlog.entries {
+		b.Write(m.styles.Role(entry.Message.Role), false)
 		if entry.err != nil {
 			b.Write("error: "+entry.err.Error(), false)
 		} else {
-			b.Write(entry.msg.Content, true)
+			b.Write(entry.Message.Content, true)
 		}
-		if i < len(m.entries)-1 {
+		if i < len(m.chatlog.entries)-1 {
 			b.Write("", false)
 		}
 	}
