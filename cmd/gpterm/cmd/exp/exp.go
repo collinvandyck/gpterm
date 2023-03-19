@@ -7,6 +7,5 @@ func Exp(deps *cobra.Command) *cobra.Command {
 		Use:   "exp",
 		Short: "Home for experiments",
 	}
-	exp.AddCommand(TUI())
 	return exp
 }

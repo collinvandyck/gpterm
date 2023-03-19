@@ -1,11 +1,10 @@
-package exp
+package ui
 
 import (
 	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -16,57 +15,22 @@ import (
 	markdown "github.com/collinvandyck/go-term-markdown"
 	"github.com/collinvandyck/gpterm"
 	"github.com/collinvandyck/gpterm/db/query"
-	"github.com/spf13/cobra"
 )
 
-func TUI() *cobra.Command {
-	var logfile string
-	cmd := &cobra.Command{
-		Use:   "tui",
-		Short: "Run experimental TUI",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := context.Background()
-			store, err := gpterm.NewStore()
-			if err != nil {
-				return err
-			}
-			key, err := store.GetAPIKey(ctx)
-			if err != nil {
-				return err
-			}
-			if key == "" {
-				fmt.Fprintln(os.Stderr, "No API key has been set. Run this command to set it:")
-				fmt.Fprintln(os.Stderr, "")
-				fmt.Fprintln(os.Stderr, fmt.Sprintf("%s auth", cmd.Root().Use))
-				os.Exit(1)
-			}
-			gpt, err := gpterm.NewClient(ctx, store)
-			if err != nil {
-				return err
-			}
-			defer gpt.Close()
-			logger := io.Discard
-			if logfile != "" {
-				f, err := os.Create(logfile)
-				if err != nil {
-					return err
-				}
-				defer f.Close()
-				logger = f
-			}
-			tui := tui{
-				store:     store,
-				client:    gpt,
-				logWriter: logger,
-			}
-			return tui.Run(ctx)
-		},
+// Start engages the terminal UI
+func Start(ctx context.Context, store *gpterm.Store, client *gpterm.Client, opts ...Option) error {
+	console := &console{
+		store:     store,
+		client:    client,
+		logWriter: io.Discard,
 	}
-	cmd.Flags().StringVar(&logfile, "log", "", "log to this file")
-	return cmd
+	for _, o := range opts {
+		o(console)
+	}
+	return console.run(ctx)
 }
 
-type tui struct {
+type console struct {
 	store     *gpterm.Store
 	client    *gpterm.Client
 	width     int
@@ -74,7 +38,7 @@ type tui struct {
 	logWriter io.Writer
 }
 
-func (t *tui) Run(ctx context.Context) error {
+func (t *console) run(ctx context.Context) error {
 	t.log("Starting")
 	defer t.log("Exiting")
 	model, err := t.chatModel()
@@ -86,12 +50,12 @@ func (t *tui) Run(ctx context.Context) error {
 	return err
 }
 
-func (t *tui) log(msg string, args ...any) {
+func (t *console) log(msg string, args ...any) {
 	fmt.Fprintf(t.logWriter, msg, args...)
 	fmt.Fprint(t.logWriter, "\n")
 }
 
-func (t *tui) chatModel() (tea.Model, error) {
+func (t *console) chatModel() (tea.Model, error) {
 	return newChatModel(t), nil
 }
 
@@ -101,7 +65,7 @@ type chatEntry struct {
 }
 
 type chatModel struct {
-	t           *tui
+	t           *console
 	vp          viewport.Model
 	ta          textarea.Model
 	senderStyle lipgloss.Style
@@ -113,7 +77,7 @@ type chatModel struct {
 
 // https://github.com/charmbracelet/bubbletea/blob/master/examples/pager/main.go
 // https://github.com/charmbracelet/bubbles
-func newChatModel(t *tui) chatModel {
+func newChatModel(t *console) chatModel {
 	return chatModel{
 		t:           t,
 		senderStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("5")),
