@@ -1,16 +1,17 @@
-package gpterm
+package store
 
 import (
 	"context"
 	"database/sql"
-	"embed"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/collinvandyck/gpterm/db"
 	"github.com/collinvandyck/gpterm/db/query"
+	"github.com/collinvandyck/gpterm/lib/client"
 	"github.com/collinvandyck/gpterm/lib/errs"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -54,7 +55,7 @@ func StoreDir(path string) StoreOpt {
 	}
 }
 
-func NewStore(opts ...StoreOpt) (*Store, error) {
+func New(opts ...StoreOpt) (*Store, error) {
 	store := &Store{}
 	for _, o := range opts {
 		o(store)
@@ -68,9 +69,13 @@ func NewStore(opts ...StoreOpt) (*Store, error) {
 	}
 	err := store.init()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("init: %w", err)
 	}
 	return store, nil
+}
+
+func (s *Store) ChatContext() client.ChatContext {
+	return &chatContext{s}
 }
 
 func (s *Store) GetTotalUsage(ctx context.Context) (res query.Usage, err error) {
@@ -167,20 +172,17 @@ func (s *Store) init() error {
 		return err
 	}
 	if err := s.migrate(); err != nil {
-		return err
+		return fmt.Errorf("migrate: %w", err)
 	}
 	if err := s.initDB(); err != nil {
-		return err
+		return fmt.Errorf("initDB: %w", err)
 	}
 	s.queries = query.New(s.db)
 	return nil
 }
 
-//go:embed db/migrations/*.sql
-var FSMigrations embed.FS
-
 func (s *Store) migrate() error {
-	sourceDriver, err := iofs.New(FSMigrations, "db/migrations")
+	sourceDriver, err := iofs.New(db.FSMigrations, "migrations")
 	if err != nil {
 		return err
 	}

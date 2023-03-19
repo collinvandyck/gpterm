@@ -4,7 +4,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/collinvandyck/gpterm"
+	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +13,7 @@ func Sqlite() *cobra.Command {
 		Use:   "sqlite",
 		Short: "open sqlite3 against the database",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dbPath, err := gpterm.DefaultDBPath()
+			dbPath, err := store.DefaultDBPath()
 			if err != nil {
 				return err
 			}

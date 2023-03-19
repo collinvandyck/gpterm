@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/collinvandyck/gpterm"
+	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +14,7 @@ func Usage() *cobra.Command {
 		Short: "Display usage",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			store, err := gpterm.NewStore()
+			store, err := store.New()
 			if err != nil {
 				return err
 			}

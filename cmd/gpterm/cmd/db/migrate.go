@@ -9,8 +9,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/collinvandyck/gpterm"
+	"github.com/collinvandyck/gpterm/db"
 	"github.com/collinvandyck/gpterm/lib/git"
+	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/spf13/cobra"
@@ -46,11 +47,11 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 		Use:   "up",
 		Short: "bring migrations up to date",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dbPath, err := gpterm.DefaultDBPath()
+			dbPath, err := store.DefaultDBPath()
 			if err != nil {
 				return err
 			}
-			sourceDriver, err := iofs.New(gpterm.FSMigrations, "db/migrations")
+			sourceDriver, err := iofs.New(db.FSMigrations, "db/migrations")
 			if err != nil {
 				return err
 			}
@@ -73,11 +74,11 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 		Use:   "down",
 		Short: "undo all migrations",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dbPath, err := gpterm.DefaultDBPath()
+			dbPath, err := store.DefaultDBPath()
 			if err != nil {
 				return err
 			}
-			sourceDriver, err := iofs.New(gpterm.FSMigrations, "db/migrations")
+			sourceDriver, err := iofs.New(db.FSMigrations, "db/migrations")
 			if err != nil {
 				return err
 			}
@@ -105,11 +106,11 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			dbPath, err := gpterm.DefaultDBPath()
+			dbPath, err := store.DefaultDBPath()
 			if err != nil {
 				return err
 			}
-			sourceDriver, err := iofs.New(gpterm.FSMigrations, "db/migrations")
+			sourceDriver, err := iofs.New(db.FSMigrations, "db/migrations")
 			if err != nil {
 				return err
 			}

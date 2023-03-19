@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/collinvandyck/gpterm"
 	"github.com/collinvandyck/gpterm/lib/client"
+	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/collinvandyck/gpterm/lib/ui"
 	"github.com/spf13/cobra"
 )
@@ -20,9 +20,9 @@ func Repl() *cobra.Command {
 		Aliases: []string{"repl"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
-			store, err := gpterm.NewStore()
+			store, err := store.New()
 			if err != nil {
-				return err
+				return fmt.Errorf("new store: %w", err)
 			}
 			key, err := store.GetAPIKey(ctx)
 			if err != nil {
@@ -34,9 +34,9 @@ func Repl() *cobra.Command {
 				fmt.Fprintln(os.Stderr, fmt.Sprintf("%s auth", cmd.Root().Use))
 				os.Exit(1)
 			}
-			client, err := client.New(key) // todo: add store context
+			client, err := client.New(key, client.WithChatContext(store.ChatContext()))
 			if err != nil {
-				return err
+				return fmt.Errorf("new client: %w", err)
 			}
 			logger := io.Discard
 			if logfile != "" {

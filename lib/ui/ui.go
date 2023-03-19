@@ -13,14 +13,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	markdown "github.com/collinvandyck/go-term-markdown"
-	"github.com/collinvandyck/gpterm"
 	"github.com/collinvandyck/gpterm/db/query"
 	"github.com/collinvandyck/gpterm/lib/client"
+	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/sashabaranov/go-openai"
 )
 
 // Start engages the terminal UI
-func Start(ctx context.Context, store *gpterm.Store, client client.Client, opts ...Option) error {
+func Start(ctx context.Context, store *store.Store, client client.Client, opts ...Option) error {
 	console := &console{
 		store:     store,
 		client:    client,
@@ -33,7 +33,7 @@ func Start(ctx context.Context, store *gpterm.Store, client client.Client, opts 
 }
 
 type console struct {
-	store     *gpterm.Store
+	store     *store.Store
 	client    client.Client
 	width     int
 	height    int

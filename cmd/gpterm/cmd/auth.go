@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/collinvandyck/gpterm"
+	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +24,7 @@ func Auth() *cobra.Command {
 			if key == "" {
 				return errors.New("no key supplied")
 			}
-			store, err := gpterm.NewStore()
+			store, err := store.New()
 			if err != nil {
 				return fmt.Errorf("store: %w", err)
 			}

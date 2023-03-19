@@ -9,8 +9,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/collinvandyck/gpterm"
 	"github.com/collinvandyck/gpterm/lib/cmdkit"
+	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +24,7 @@ func Schema() *cobra.Command {
 				return fmt.Errorf("mktmp: %w", err)
 			}
 			defer os.RemoveAll(tmpDir)
-			store, err := gpterm.NewStore(gpterm.StoreDir(tmpDir))
+			store, err := store.New(store.StoreDir(tmpDir))
 			if err != nil {
 				return fmt.Errorf("new store: %w", err)
 			}
