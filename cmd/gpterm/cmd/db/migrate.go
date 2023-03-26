@@ -52,7 +52,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			sourceDriver, err := iofs.New(db.FSMigrations, "db/migrations")
+			sourceDriver, err := iofs.New(db.FSMigrations, "migrations")
 			if err != nil {
 				return err
 			}
@@ -79,7 +79,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			sourceDriver, err := iofs.New(db.FSMigrations, "db/migrations")
+			sourceDriver, err := iofs.New(db.FSMigrations, "migrations")
 			if err != nil {
 				return err
 			}
@@ -111,7 +111,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			sourceDriver, err := iofs.New(db.FSMigrations, "db/migrations")
+			sourceDriver, err := iofs.New(db.FSMigrations, "migrations")
 			if err != nil {
 				return err
 			}
@@ -120,7 +120,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			log.Info("Stepping", n)
+			log.Info("Stepping %d", n)
 			err = mg.Steps(int(n))
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):

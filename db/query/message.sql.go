@@ -9,10 +9,30 @@ import (
 	"context"
 )
 
-const getLatestMessages = `-- name: GetLatestMessages :many
-select id, timestamp, role, content
+const countMessagesForConversation = `-- name: CountMessagesForConversation :one
+select count(*) 
 from message
-where id in (select id from message order by id desc limit ?)
+where conversation_id = ?
+`
+
+func (q *Queries) CountMessagesForConversation(ctx context.Context, conversationID int64) (int64, error) {
+	row := q.queryRow(ctx, q.countMessagesForConversationStmt, countMessagesForConversation, conversationID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const getLatestMessages = `-- name: GetLatestMessages :many
+select id, timestamp, role, content, conversation_id
+from message
+where id in (
+	select m.id 
+	from message m 
+	join conversation c on m.conversation_id = c.id
+	where c.selected = true
+	order by m.id desc 
+	limit ?
+)
 order by id
 `
 
@@ -30,6 +50,7 @@ func (q *Queries) GetLatestMessages(ctx context.Context, limit int64) ([]Message
 			&i.Timestamp,
 			&i.Role,
 			&i.Content,
+			&i.ConversationID,
 		); err != nil {
 			return nil, err
 		}
@@ -45,7 +66,7 @@ func (q *Queries) GetLatestMessages(ctx context.Context, limit int64) ([]Message
 }
 
 const getMessages = `-- name: GetMessages :many
-SELECT id, timestamp, role, content FROM message
+SELECT id, timestamp, role, content, conversation_id FROM message
 `
 
 func (q *Queries) GetMessages(ctx context.Context) ([]Message, error) {
@@ -62,6 +83,7 @@ func (q *Queries) GetMessages(ctx context.Context) ([]Message, error) {
 			&i.Timestamp,
 			&i.Role,
 			&i.Content,
+			&i.ConversationID,
 		); err != nil {
 			return nil, err
 		}
@@ -76,9 +98,41 @@ func (q *Queries) GetMessages(ctx context.Context) ([]Message, error) {
 	return items, nil
 }
 
+const getPreviousMessageForRole = `-- name: GetPreviousMessageForRole :one
+select m.id, m.timestamp, m.role, m.content, m.conversation_id
+from message m
+join conversation c on m.conversation_id = c.id
+where m.role = ?
+and c.selected = true
+order by m.id desc
+limit 1 offset ?
+`
+
+type GetPreviousMessageForRoleParams struct {
+	Role   string `json:"role"`
+	Offset int64  `json:"offset"`
+}
+
+func (q *Queries) GetPreviousMessageForRole(ctx context.Context, arg GetPreviousMessageForRoleParams) (Message, error) {
+	row := q.queryRow(ctx, q.getPreviousMessageForRoleStmt, getPreviousMessageForRole, arg.Role, arg.Offset)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.Timestamp,
+		&i.Role,
+		&i.Content,
+		&i.ConversationID,
+	)
+	return i, err
+}
+
 const insertMessage = `-- name: InsertMessage :exec
-INSERT INTO message (role, content) 
-VALUES (?,?)
+;
+
+INSERT INTO message (role, content, conversation_id) 
+SELECT ?, ?, id
+from conversation
+where selected = true
 `
 
 type InsertMessageParams struct {

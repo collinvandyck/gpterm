@@ -26,7 +26,16 @@ var root = &cobra.Command{
 	Aliases:      []string{"repl"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		store, err := store.New()
+		logger := log.Discard
+		if logfile != "" {
+			f, err := os.Create(logfile)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			logger = log.New(log.WithStdout(f), log.WithStderr(f))
+		}
+		store, err := store.New(store.StoreLog(log.Prefixed("store", logger)))
 		if err != nil {
 			return fmt.Errorf("new store: %w", err)
 		}
@@ -43,15 +52,6 @@ var root = &cobra.Command{
 		client, err := client.New(key)
 		if err != nil {
 			return fmt.Errorf("new client: %w", err)
-		}
-		logger := log.Discard
-		if logfile != "" {
-			f, err := os.Create(logfile)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-			logger = log.New(log.WithStdout(f), log.WithStderr(f))
 		}
 		ui := ui.New(store, client, ui.WithLogger(logger))
 		return ui.Run(ctx)

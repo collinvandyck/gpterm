@@ -12,6 +12,7 @@ import (
 	"github.com/collinvandyck/gpterm/db"
 	"github.com/collinvandyck/gpterm/db/query"
 	"github.com/collinvandyck/gpterm/lib/errs"
+	"github.com/collinvandyck/gpterm/lib/log"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -41,12 +42,19 @@ func DefaultDBPath() (string, error) {
 }
 
 type Store struct {
+	log.Logger
 	dir     string
 	db      *sql.DB
 	queries *query.Queries
 }
 
 type StoreOpt func(*Store)
+
+func StoreLog(log log.Logger) StoreOpt {
+	return func(s *Store) {
+		s.Logger = log
+	}
+}
 
 func StoreDir(path string) StoreOpt {
 	return func(s *Store) {
@@ -55,7 +63,9 @@ func StoreDir(path string) StoreOpt {
 }
 
 func New(opts ...StoreOpt) (*Store, error) {
-	store := &Store{}
+	store := &Store{
+		Logger: log.Discard,
+	}
 	for _, o := range opts {
 		o(store)
 	}
@@ -71,6 +81,87 @@ func New(opts ...StoreOpt) (*Store, error) {
 		return nil, fmt.Errorf("init: %w", err)
 	}
 	return store, nil
+}
+
+func (s *Store) NextConversation(ctx context.Context) error {
+	s.Info("Next Conversation")
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	queryTX := s.queries.WithTx(tx)
+
+	c, err := queryTX.NextConversation(ctx)
+	switch {
+	case err == nil:
+		s.Info("Next convo found")
+		err = queryTX.UnsetSelectedConversation(ctx)
+		if err != nil {
+			return err
+		}
+		err = queryTX.SetSelectedConversation(ctx, c.ID)
+		if err != nil {
+			return err
+		}
+		return tx.Commit()
+	case errs.IsDBNotFound(err):
+		s.Info("Next convo not found")
+		c, err = queryTX.GetActiveConversation(ctx)
+		if err != nil {
+			return err
+		}
+		count, err := queryTX.CountMessagesForConversation(ctx, c.ID)
+		if err != nil {
+			return err
+		}
+		if count == 0 {
+			return nil
+		}
+		c, err = queryTX.CreateConversation(ctx)
+		if err != nil {
+			return err
+		}
+		err = queryTX.UnsetSelectedConversation(ctx)
+		if err != nil {
+			return err
+		}
+		err = queryTX.SetSelectedConversation(ctx, c.ID)
+		if err != nil {
+			return err
+		}
+		return tx.Commit()
+	default:
+		return err
+	}
+}
+
+func (s *Store) PreviousConversation(ctx context.Context) error {
+	s.Info("Previous conversation")
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	queryTX := s.queries.WithTx(tx)
+
+	c, err := queryTX.PreviousConversation(ctx)
+	switch {
+	case err == nil:
+		err = queryTX.UnsetSelectedConversation(ctx)
+		if err != nil {
+			return err
+		}
+		err = queryTX.SetSelectedConversation(ctx, c.ID)
+		if err != nil {
+			return err
+		}
+		return tx.Commit()
+	case errs.IsDBNotFound(err):
+		return nil
+	default:
+		return err
+	}
 }
 
 func (s *Store) GetTotalUsage(ctx context.Context) (res query.Usage, err error) {
@@ -92,6 +183,16 @@ func (s *Store) GetTotalUsage(ctx context.Context) (res query.Usage, err error) 
 		TotalTokens:      int64(total),
 	}
 	return
+}
+
+func (s *Store) GetPreviousMessageForRole(ctx context.Context, role string, offset int) (query.Message, error) {
+	if offset <= 0 {
+		return query.Message{}, errors.New("bad offset")
+	}
+	return s.queries.GetPreviousMessageForRole(ctx, query.GetPreviousMessageForRoleParams{
+		Role:   role,
+		Offset: int64(offset - 1),
+	})
 }
 
 func (s *Store) GetLastMessages(ctx context.Context, count int) ([]query.Message, error) {

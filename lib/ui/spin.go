@@ -26,15 +26,6 @@ func newSpinner(uiOpts uiOpts) spin {
 	return res
 }
 
-func (m spin) tick() tea.Cmd {
-	return tea.Tick(m.duration, func(t time.Time) tea.Msg {
-		return spinner.TickMsg{
-			Time: t,
-			ID:   1,
-		}
-	})
-}
-
 func (m spin) Init() tea.Cmd {
 	return m.spinner.Tick
 }
@@ -52,4 +43,13 @@ func (m spin) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m spin) View() string {
 	return m.spinner.View()
+}
+
+func (m spin) tick() tea.Cmd {
+	return tea.Tick(m.duration, func(t time.Time) tea.Msg {
+		return spinner.TickMsg{
+			Time: t,
+			ID:   1,
+		}
+	})
 }

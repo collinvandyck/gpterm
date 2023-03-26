@@ -7,5 +7,8 @@ func Exp(deps *cobra.Command) *cobra.Command {
 		Use:   "exp",
 		Short: "Home for experiments",
 	}
+	exp.AddCommand(scrollCmd())
+	exp.AddCommand(scrollbackCmd())
+	exp.AddCommand(altScreenCmd())
 	return exp
 }

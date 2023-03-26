@@ -5,8 +5,16 @@
 package query
 
 import (
+	"database/sql"
 	"time"
 )
+
+type Conversation struct {
+	ID        int64          `json:"id"`
+	Name      sql.NullString `json:"name"`
+	Protected int64          `json:"protected"`
+	Selected  int64          `json:"selected"`
+}
 
 type Credential struct {
 	Name  string `json:"name"`
@@ -14,10 +22,11 @@ type Credential struct {
 }
 
 type Message struct {
-	ID        int64     `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	Role      string    `json:"role"`
-	Content   string    `json:"content"`
+	ID             int64     `json:"id"`
+	Timestamp      time.Time `json:"timestamp"`
+	Role           string    `json:"role"`
+	Content        string    `json:"content"`
+	ConversationID int64     `json:"conversation_id"`
 }
 
 type Usage struct {

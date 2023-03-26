@@ -11,6 +11,7 @@ import (
 
 type Client interface {
 	Complete(ctx context.Context, latest []query.Message, content string) (*CompleteResult, error)
+	Stream(ctx context.Context, latest []query.Message, content string) (*StreamResult, error)
 }
 
 type client struct {
@@ -29,9 +30,46 @@ func New(apiKey string, opts ...Option) (Client, error) {
 	return res, nil
 }
 
+type StreamResult struct {
+	Req      openai.ChatCompletionRequest
+	Response *openai.ChatCompletionStream
+}
+
 type CompleteResult struct {
 	Req      openai.ChatCompletionRequest
 	Response openai.ChatCompletionResponse
+}
+
+func (c *client) Stream(ctx context.Context, latest []query.Message, content string) (*StreamResult, error) {
+	messages := []openai.ChatCompletionMessage{
+		{
+			Role:    openai.ChatMessageRoleAssistant,
+			Content: "You are a helpful assistant",
+		},
+	}
+	for _, msg := range latest {
+		messages = append(messages, openai.ChatCompletionMessage{
+			Role:    msg.Role,
+			Content: msg.Content,
+		})
+	}
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleUser,
+		Content: content,
+	})
+	req := openai.ChatCompletionRequest{
+		Model:    c.model,
+		Messages: messages,
+	}
+	resp, err := c.openai.CreateChatCompletionStream(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("stream: %w", err)
+	}
+	res := &StreamResult{
+		Req:      req,
+		Response: resp,
+	}
+	return res, nil
 }
 
 func (c *client) Complete(ctx context.Context, latest []query.Message, content string) (*CompleteResult, error) {

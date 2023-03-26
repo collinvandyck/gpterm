@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/collinvandyck/gpterm/lib/client"
@@ -17,10 +18,12 @@ type UI interface {
 func New(store *store.Store, client client.Client, opts ...Option) UI {
 	console := &console{
 		uiOpts: uiOpts{
-			Logger: log.Discard,
-			store:  store,
-			client: client,
-			styles: newStaticStyles(),
+			Logger:        log.Discard,
+			store:         store,
+			client:        client,
+			styles:        newStaticStyles(),
+			clientTimeout: time.Minute,
+			clientContext: 5,
 		},
 	}
 	for _, o := range opts {
@@ -31,9 +34,16 @@ func New(store *store.Store, client client.Client, opts ...Option) UI {
 
 type uiOpts struct {
 	log.Logger
-	store  *store.Store
-	client client.Client
-	styles styles
+	store         *store.Store
+	client        client.Client
+	styles        styles
+	clientTimeout time.Duration // how long to wait for a response
+	clientContext int           // how much chat context to send
+}
+
+func (uiOpts uiOpts) WithLogPrefix(prefix string) uiOpts {
+	uiOpts.Logger = log.Prefixed(prefix, uiOpts.Logger)
+	return uiOpts
 }
 
 type console struct {
@@ -41,10 +51,18 @@ type console struct {
 }
 
 func (t *console) Run(ctx context.Context) error {
-	model := newChatModel(t.uiOpts)
-	p := tea.NewProgram(model,
-		tea.WithAltScreen(),
-		tea.WithMouseCellMotion())
+	//output := termenv.DefaultOutput()
+	// cache detected color values
+	//termenv.WithColorCache(true)(output)
+
+	//termbox.Init()
+
+	t.Info("\ngpterm starting...\n")
+	model := newControlModel(t.uiOpts)
+
+	// Note that using the alt screen buffer hampers our ability to print
+	// output above our program.
+	p := tea.NewProgram(model)
 	_, err := p.Run()
 	return err
 }

@@ -1,20 +1,12 @@
-CREATE TABLE credential (
-	name varchar primary key,
-	value text NOT NULL
-);
-CREATE TABLE usage (
-	id integer primary key,
-	timestamp datetime not null default current_timestamp,
-	prompt_tokens integer not null,
-	completion_tokens integer not null,
-	total_tokens integer not null
-);
-CREATE TABLE conversation (
+create table conversation (
 	id integer primary key,
 	name text,
 	protected integer not null default 0,
 	selected integer not null default 0
 );
+insert into conversation(id, name, protected, selected) values (0, 'default', true, true);
+
+ALTER TABLE message RENAME TO message_old;
 CREATE TABLE message (
 	id integer primary key,
 	timestamp datetime not null default current_timestamp,
@@ -23,3 +15,5 @@ CREATE TABLE message (
 	conversation_id integer not null default 0,
 	FOREIGN KEY (conversation_id) REFERENCES conversation(id)
 );
+INSERT INTO message SELECT id, timestamp, role, content, 0 from message_old;
+DROP TABLE message_old;

@@ -24,17 +24,32 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.countMessagesForConversationStmt, err = db.PrepareContext(ctx, countMessagesForConversation); err != nil {
+		return nil, fmt.Errorf("error preparing query CountMessagesForConversation: %w", err)
+	}
+	if q.createConversationStmt, err = db.PrepareContext(ctx, createConversation); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateConversation: %w", err)
+	}
 	if q.getAPIKeyStmt, err = db.PrepareContext(ctx, getAPIKey); err != nil {
 		return nil, fmt.Errorf("error preparing query GetAPIKey: %w", err)
 	}
+	if q.getActiveConversationStmt, err = db.PrepareContext(ctx, getActiveConversation); err != nil {
+		return nil, fmt.Errorf("error preparing query GetActiveConversation: %w", err)
+	}
 	if q.getCompletionTokensStmt, err = db.PrepareContext(ctx, getCompletionTokens); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCompletionTokens: %w", err)
+	}
+	if q.getConversationsStmt, err = db.PrepareContext(ctx, getConversations); err != nil {
+		return nil, fmt.Errorf("error preparing query GetConversations: %w", err)
 	}
 	if q.getLatestMessagesStmt, err = db.PrepareContext(ctx, getLatestMessages); err != nil {
 		return nil, fmt.Errorf("error preparing query GetLatestMessages: %w", err)
 	}
 	if q.getMessagesStmt, err = db.PrepareContext(ctx, getMessages); err != nil {
 		return nil, fmt.Errorf("error preparing query GetMessages: %w", err)
+	}
+	if q.getPreviousMessageForRoleStmt, err = db.PrepareContext(ctx, getPreviousMessageForRole); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPreviousMessageForRole: %w", err)
 	}
 	if q.getPromptTokensStmt, err = db.PrepareContext(ctx, getPromptTokens); err != nil {
 		return nil, fmt.Errorf("error preparing query GetPromptTokens: %w", err)
@@ -51,6 +66,18 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.insertUsageStmt, err = db.PrepareContext(ctx, insertUsage); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertUsage: %w", err)
 	}
+	if q.nextConversationStmt, err = db.PrepareContext(ctx, nextConversation); err != nil {
+		return nil, fmt.Errorf("error preparing query NextConversation: %w", err)
+	}
+	if q.previousConversationStmt, err = db.PrepareContext(ctx, previousConversation); err != nil {
+		return nil, fmt.Errorf("error preparing query PreviousConversation: %w", err)
+	}
+	if q.setSelectedConversationStmt, err = db.PrepareContext(ctx, setSelectedConversation); err != nil {
+		return nil, fmt.Errorf("error preparing query SetSelectedConversation: %w", err)
+	}
+	if q.unsetSelectedConversationStmt, err = db.PrepareContext(ctx, unsetSelectedConversation); err != nil {
+		return nil, fmt.Errorf("error preparing query UnsetSelectedConversation: %w", err)
+	}
 	if q.updateAPIKeyStmt, err = db.PrepareContext(ctx, updateAPIKey); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateAPIKey: %w", err)
 	}
@@ -59,14 +86,34 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.countMessagesForConversationStmt != nil {
+		if cerr := q.countMessagesForConversationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing countMessagesForConversationStmt: %w", cerr)
+		}
+	}
+	if q.createConversationStmt != nil {
+		if cerr := q.createConversationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createConversationStmt: %w", cerr)
+		}
+	}
 	if q.getAPIKeyStmt != nil {
 		if cerr := q.getAPIKeyStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getAPIKeyStmt: %w", cerr)
 		}
 	}
+	if q.getActiveConversationStmt != nil {
+		if cerr := q.getActiveConversationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getActiveConversationStmt: %w", cerr)
+		}
+	}
 	if q.getCompletionTokensStmt != nil {
 		if cerr := q.getCompletionTokensStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getCompletionTokensStmt: %w", cerr)
+		}
+	}
+	if q.getConversationsStmt != nil {
+		if cerr := q.getConversationsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getConversationsStmt: %w", cerr)
 		}
 	}
 	if q.getLatestMessagesStmt != nil {
@@ -77,6 +124,11 @@ func (q *Queries) Close() error {
 	if q.getMessagesStmt != nil {
 		if cerr := q.getMessagesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getMessagesStmt: %w", cerr)
+		}
+	}
+	if q.getPreviousMessageForRoleStmt != nil {
+		if cerr := q.getPreviousMessageForRoleStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPreviousMessageForRoleStmt: %w", cerr)
 		}
 	}
 	if q.getPromptTokensStmt != nil {
@@ -102,6 +154,26 @@ func (q *Queries) Close() error {
 	if q.insertUsageStmt != nil {
 		if cerr := q.insertUsageStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing insertUsageStmt: %w", cerr)
+		}
+	}
+	if q.nextConversationStmt != nil {
+		if cerr := q.nextConversationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing nextConversationStmt: %w", cerr)
+		}
+	}
+	if q.previousConversationStmt != nil {
+		if cerr := q.previousConversationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing previousConversationStmt: %w", cerr)
+		}
+	}
+	if q.setSelectedConversationStmt != nil {
+		if cerr := q.setSelectedConversationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setSelectedConversationStmt: %w", cerr)
+		}
+	}
+	if q.unsetSelectedConversationStmt != nil {
+		if cerr := q.unsetSelectedConversationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing unsetSelectedConversationStmt: %w", cerr)
 		}
 	}
 	if q.updateAPIKeyStmt != nil {
@@ -146,33 +218,51 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                      DBTX
-	tx                      *sql.Tx
-	getAPIKeyStmt           *sql.Stmt
-	getCompletionTokensStmt *sql.Stmt
-	getLatestMessagesStmt   *sql.Stmt
-	getMessagesStmt         *sql.Stmt
-	getPromptTokensStmt     *sql.Stmt
-	getTotalTokensStmt      *sql.Stmt
-	insertAPIKeyStmt        *sql.Stmt
-	insertMessageStmt       *sql.Stmt
-	insertUsageStmt         *sql.Stmt
-	updateAPIKeyStmt        *sql.Stmt
+	db                               DBTX
+	tx                               *sql.Tx
+	countMessagesForConversationStmt *sql.Stmt
+	createConversationStmt           *sql.Stmt
+	getAPIKeyStmt                    *sql.Stmt
+	getActiveConversationStmt        *sql.Stmt
+	getCompletionTokensStmt          *sql.Stmt
+	getConversationsStmt             *sql.Stmt
+	getLatestMessagesStmt            *sql.Stmt
+	getMessagesStmt                  *sql.Stmt
+	getPreviousMessageForRoleStmt    *sql.Stmt
+	getPromptTokensStmt              *sql.Stmt
+	getTotalTokensStmt               *sql.Stmt
+	insertAPIKeyStmt                 *sql.Stmt
+	insertMessageStmt                *sql.Stmt
+	insertUsageStmt                  *sql.Stmt
+	nextConversationStmt             *sql.Stmt
+	previousConversationStmt         *sql.Stmt
+	setSelectedConversationStmt      *sql.Stmt
+	unsetSelectedConversationStmt    *sql.Stmt
+	updateAPIKeyStmt                 *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                      tx,
-		tx:                      tx,
-		getAPIKeyStmt:           q.getAPIKeyStmt,
-		getCompletionTokensStmt: q.getCompletionTokensStmt,
-		getLatestMessagesStmt:   q.getLatestMessagesStmt,
-		getMessagesStmt:         q.getMessagesStmt,
-		getPromptTokensStmt:     q.getPromptTokensStmt,
-		getTotalTokensStmt:      q.getTotalTokensStmt,
-		insertAPIKeyStmt:        q.insertAPIKeyStmt,
-		insertMessageStmt:       q.insertMessageStmt,
-		insertUsageStmt:         q.insertUsageStmt,
-		updateAPIKeyStmt:        q.updateAPIKeyStmt,
+		db:                               tx,
+		tx:                               tx,
+		countMessagesForConversationStmt: q.countMessagesForConversationStmt,
+		createConversationStmt:           q.createConversationStmt,
+		getAPIKeyStmt:                    q.getAPIKeyStmt,
+		getActiveConversationStmt:        q.getActiveConversationStmt,
+		getCompletionTokensStmt:          q.getCompletionTokensStmt,
+		getConversationsStmt:             q.getConversationsStmt,
+		getLatestMessagesStmt:            q.getLatestMessagesStmt,
+		getMessagesStmt:                  q.getMessagesStmt,
+		getPreviousMessageForRoleStmt:    q.getPreviousMessageForRoleStmt,
+		getPromptTokensStmt:              q.getPromptTokensStmt,
+		getTotalTokensStmt:               q.getTotalTokensStmt,
+		insertAPIKeyStmt:                 q.insertAPIKeyStmt,
+		insertMessageStmt:                q.insertMessageStmt,
+		insertUsageStmt:                  q.insertUsageStmt,
+		nextConversationStmt:             q.nextConversationStmt,
+		previousConversationStmt:         q.previousConversationStmt,
+		setSelectedConversationStmt:      q.setSelectedConversationStmt,
+		unsetSelectedConversationStmt:    q.unsetSelectedConversationStmt,
+		updateAPIKeyStmt:                 q.updateAPIKeyStmt,
 	}
 }
