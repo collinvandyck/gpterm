@@ -11,9 +11,8 @@ gpterm is a terminal-based integration with the OpenAI chat API.
 Requirements:
 
 - Go 1.18 or higher
+- GOPATH env variable set (install will write to `$GOPATH/bin`)
 - OpenAPI API Key
-- Set GOPATH environment variable to your go installation, e.g., /Users/your-username/go
-- Add $GOPATH/bin to your PATH
 
 To install from source:
 
