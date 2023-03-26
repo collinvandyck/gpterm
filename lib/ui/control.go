@@ -29,6 +29,7 @@ type controlModel struct {
 	help           bool // if we are in help mode
 	width          int
 	height         int
+	inflight       bool
 }
 
 type completionReq struct {
@@ -140,6 +141,7 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case completionReq:
+		m.inflight = true
 		m.history.addUserPrompt(msg.text)
 		cmds.Add(tea.Sequence(
 			m.printLastHistory(),
@@ -147,6 +149,7 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		))
 
 	case completion:
+		m.inflight = false
 		m.history.addCompletion(msg.choices, msg.err)
 		cmds.Add(m.printLastHistory())
 
@@ -157,10 +160,14 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case tea.KeyCtrlP:
-			cmds.Add(m.prevConvo())
+			if !m.inflight {
+				cmds.Add(m.prevConvo())
+			}
 
 		case tea.KeyCtrlN:
-			cmds.Add(m.nextConvo())
+			if !m.inflight {
+				cmds.Add(m.nextConvo())
+			}
 
 		case tea.KeyCtrlG:
 			if true {
