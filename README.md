@@ -1,10 +1,10 @@
 # gpterm (GPT terminal)
 
-gpterm is a terminal-based integraiton with the OpenAI chat APIs.
+gpterm is a terminal-based integration with the OpenAI chat API.
 
-Chat history and other metadata are stored in
+# Screenshots
 
-	~/.config/gpterm
+![gpterm screenshot](gpterm.png)
 
 # Installation
 
@@ -46,13 +46,14 @@ While OpenAPI is incredibly cheap at the moment, it's not totally free. You can 
 	Completion: 19722
 	Total:      78483
 	Cost:       $0.16 ($0.002 per 1K tokens)
-	
+
+# Storage
+
+Chat history and other metadata are stored in
+
+	~/.config/gpterm
+
 # Upcoming
-
-## Conversation Support
-
-Currently all message history is stored without a conversation namespace. Adding conversations will allow you to
-start a new conversation, or jump back to an existing one.
 
 ## Configurable Roles
 
