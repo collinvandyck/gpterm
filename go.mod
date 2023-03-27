@@ -10,7 +10,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/kyleconroy/sqlc v1.17.2
 	github.com/mattn/go-sqlite3 v1.14.16
-	github.com/sashabaranov/go-openai v1.5.0
+	github.com/sashabaranov/go-openai v1.5.7
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/tools v0.1.12
 )
