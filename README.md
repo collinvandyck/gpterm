@@ -48,7 +48,7 @@ While OpenAPI is incredibly cheap at the moment, it's not totally free. You can 
 
 # Storage
 
-Chat history and other metadata are stored in
+Chat history and your API key are stored in a sqlite database in:
 
 	~/.config/gpterm
 
