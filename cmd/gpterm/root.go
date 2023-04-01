@@ -6,6 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"net/http"
+	_ "net/http/pprof"
+
 	"github.com/collinvandyck/gpterm/cmd/gpterm/cmd"
 	"github.com/collinvandyck/gpterm/cmd/gpterm/cmd/db"
 	"github.com/collinvandyck/gpterm/cmd/gpterm/cmd/exp"
@@ -17,6 +20,8 @@ import (
 )
 
 var logfile string
+var pprof bool
+
 var root = &cobra.Command{
 	Use:          filepath.Base(os.Args[0]),
 	Short:        "Start an interactive session with ChatGPT",
@@ -26,15 +31,12 @@ var root = &cobra.Command{
 	Aliases:      []string{"repl"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		logger := log.Discard
-		if logfile != "" {
-			f, err := os.Create(logfile)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-			logger = log.New(log.WithStdout(f), log.WithStderr(f))
+		fileWriter, err := log.FileWriter(logfile)
+		if err != nil {
+			return err
 		}
+		defer fileWriter.Close()
+		logger := log.New(log.WithWriter(fileWriter))
 		store, err := store.New(store.StoreLog(log.Prefixed("store", logger)))
 		if err != nil {
 			return fmt.Errorf("new store: %w", err)
@@ -60,6 +62,7 @@ var root = &cobra.Command{
 
 func init() {
 	root.Flags().StringVar(&logfile, "log", "", "log to this file")
+	root.Flags().BoolVar(&pprof, "pprof", false, "start pprof http server in background")
 
 	root.AddCommand(cmd.Auth())
 	root.AddCommand(cmd.Deps())
@@ -69,6 +72,16 @@ func init() {
 }
 
 func main() {
+	if pprof {
+		go func() {
+			address := "localhost:6060"
+			err := http.ListenAndServe(address, nil)
+			if err != nil {
+				log.Error("Failed to start pprof HTTP server: %v", err)
+				os.Exit(1)
+			}
+		}()
+	}
 	err := root.Execute()
 	if err != nil {
 		os.Exit(1)

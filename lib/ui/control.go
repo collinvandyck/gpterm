@@ -3,13 +3,18 @@ package ui
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"math/rand"
+	"regexp"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	markdown "github.com/collinvandyck/go-term-markdown"
 	"github.com/collinvandyck/gpterm/lib/term"
+	"github.com/collinvandyck/gpterm/lib/ui/command"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -22,6 +27,7 @@ type controlModel struct {
 	prompt         tea.Model
 	chat           tea.Model
 	status         tea.Model
+	typewriter     tea.Model
 	history        history
 	historyPrinted bool // has the history been printed
 	historyLoaded  bool // has the history been loaded
@@ -69,6 +75,9 @@ func newControlModel(uiOpts uiOpts) controlModel {
 			uiOpts: uiOpts.WithLogPrefix("prompt"),
 			height: 3,
 		},
+		typewriter: typewriterModel{
+			uiOpts: uiOpts.WithLogPrefix("typewriter"),
+		},
 		status: newStatusModel(uiOpts.WithLogPrefix("status")),
 	}
 	return res
@@ -79,6 +88,7 @@ func (m controlModel) Init() tea.Cmd {
 		m.loadHistory(),
 		m.prompt.Init(),
 		m.status.Init(),
+		m.typewriter.Init(),
 	)
 }
 
@@ -90,7 +100,16 @@ func (m controlModel) View() string {
 		return ""
 	}
 	var res string
+	tv := m.typewriter.View()
+	if strings.TrimSpace(tv) != "" {
+		m.Info("Printed tw view")
+		res += tv
+		res += "\n"
+	}
+	res += "\n" // we want a line above our prompt
+
 	res += m.prompt.View()
+	res += "\n"
 	res += m.status.View()
 	return res
 }
@@ -108,12 +127,14 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case reloaded:
 		m.Info("Reloaded")
 		m.ready = true
-		if m.historyLoaded {
+		if m.historyLoaded && !m.historyPrinted {
+			m.Info("Printing history after reloaded")
 			cmds.Add(m.printHistory())
 		}
 
 	case redrawMsg:
-		if m.historyLoaded {
+		if m.historyLoaded && !m.historyPrinted {
+			m.Info("Printing history after redraw")
 			cmds.Add(m.printHistory())
 		}
 
@@ -139,6 +160,34 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.historyPrinted {
 			cmds.Add(m.printHistory())
 		}
+
+	case command.StreamCompletionReq:
+		if msg.Dummy {
+			entries := m.history.entries
+			if len(entries) <= 1 {
+				break
+			}
+			m.inflight = true
+			text := entries[len(entries)-1].Message.Content
+			cmds.Add(tea.Sequence(
+				m.completeStaticStream(text),
+			))
+		} else {
+			m.inflight = true
+			m.history.addUserPrompt(msg.Text)
+			m.history.addAssistantPlaceholder()
+			cmds.Add(tea.Sequence(
+				m.printLastHistories(2),
+				m.completeStream(msg.Text),
+			))
+		}
+	case command.StreamCompletion:
+	case command.StreamCompletionResult:
+		m.Info("Got stream completion result len=%d err=%v", len(msg.Text), msg.Err)
+		m.inflight = false
+		m.history.entries[len(m.history.entries)-1].Message.Content = msg.Text
+		m.history.entries[len(m.history.entries)-1].err = msg.Err
+		m.history.entries[len(m.history.entries)-1].placeholder = false
 
 	case completionReq:
 		m.inflight = true
@@ -169,34 +218,13 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds.Add(m.nextConvo())
 			}
 
-		case tea.KeyCtrlG:
-			if true {
-				// don't enable this for now
-				break
-			}
-			m.help = !m.help
-			if m.help {
-				// enter help mode
-				return m, tea.Sequence(
-					m.helpStatusCmd(),
-					tea.EnterAltScreen,
-				)
-			} else {
-				// exit help mode
-				return m, tea.Sequence(
-					m.helpStatusCmd(),
-					tea.ExitAltScreen,
-					m.resetCmd(),
-					redraw,
-				)
-			}
-
 		default:
 		}
 
 	}
 	m.prompt = cmds.Update(m.prompt, msg)
 	m.status = cmds.Update(m.status, msg)
+	m.typewriter = cmds.Update(m.typewriter, msg)
 
 	return m, tea.Batch(cmds...)
 }
@@ -261,6 +289,22 @@ func (m controlModel) resetCmd() tea.Cmd {
 	)
 }
 
+func (m controlModel) printLastHistories(count int) tea.Cmd {
+	commands := []tea.Cmd{}
+	m.Info("Printing last %d historic entries", count)
+	for i := 0; i < count; i++ {
+		buf := bytes.Buffer{}
+		he := m.history.entries[len(m.history.entries)-count+i]
+		re := m.renderEntry(he)
+		re = strings.TrimSpace(re)
+		buf.WriteString("\n")
+		buf.WriteString(re)
+		out := buf.String()
+		commands = append(commands, tea.Println(out))
+	}
+	return tea.Sequence(commands...)
+}
+
 func (m controlModel) printLastHistory() tea.Cmd {
 	m.Info("Printing last historic entry")
 	buf := bytes.Buffer{}
@@ -275,12 +319,14 @@ func (m controlModel) printLastHistory() tea.Cmd {
 
 func (m controlModel) printHistory() tea.Cmd {
 	m.Info("Printing %d historic entries", len(m.history.entries))
+	defer m.Info("Done printing")
 	buf := bytes.Buffer{}
 	for i, he := range m.history.entries {
 		re := m.renderEntry(he)
+		re = strings.TrimSpace(re)
 		buf.WriteString(re)
 		if i < len(m.history.entries)-1 {
-			buf.WriteString("\n")
+			buf.WriteString("\n\n")
 		}
 	}
 	out := buf.String()
@@ -300,6 +346,9 @@ func (m controlModel) renderEntry(entry entry) string {
 		role = "error"
 	}
 	role = m.styles.Role(role)
+	if entry.placeholder {
+		return role
+	}
 	content := m.renderContent(entry)
 	return strings.Join([]string{role, content}, "\n")
 }
@@ -314,9 +363,88 @@ func (m controlModel) renderContent(entry entry) string {
 	return line
 }
 
-// complete takes the user input and executes a completion request
-// against the client. A completion value will be sent back to the
-// ui routine.
+func (m controlModel) completeStaticStream(text string) tea.Cmd {
+	return func() tea.Msg {
+		csm := command.NewStreamCompletion()
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), m.clientTimeout)
+			defer cancel()
+			err := func() error {
+				pattern := regexp.MustCompile(`\S+|\s+`)
+				fields := pattern.FindAllString(text, -1)
+				for _, field := range fields {
+					err := csm.Write(ctx, field)
+					if err != nil {
+						return err
+					}
+					time.Sleep(time.Duration(rand.Int()%25) * time.Millisecond)
+				}
+				return nil
+			}()
+			csm.Close(err)
+		}()
+		return csm
+	}
+}
+
+func (m controlModel) completeStream(msg string) tea.Cmd {
+	return func() tea.Msg {
+		csm := command.NewStreamCompletion()
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), m.clientTimeout)
+			defer cancel()
+			buf := new(bytes.Buffer) // we'll use this for saving the response
+			var usage openai.Usage
+			err := func() error {
+				latest, err := m.store.GetLastMessages(ctx, m.clientContext)
+				if err != nil {
+					return fmt.Errorf("load context: %w", err)
+				}
+				// todo: save request into store
+				streamResult, err := m.client.Stream(ctx, latest, msg)
+				if err != nil {
+					return fmt.Errorf("failed to complete: %w", err)
+				}
+				req := streamResult.Req
+				err = m.store.SaveRequest(ctx, req)
+				if err != nil {
+					return err
+				}
+				res := streamResult.Response
+				for {
+					sr, err := res.Recv()
+					switch {
+					case errors.Is(err, io.EOF):
+						m.Info("EOF")
+						return nil
+					case err != nil:
+						m.Info("err: %v", err)
+						return fmt.Errorf("recv: %w", err)
+					}
+
+					// each time we get a response we accumulate the usage
+					usage.TotalTokens += sr.Usage.TotalTokens
+					usage.PromptTokens += sr.Usage.PromptTokens
+					usage.CompletionTokens += sr.Usage.CompletionTokens
+
+					content := sr.Choices[0].Delta.Content
+					buf.WriteString(content)
+					err = csm.Write(ctx, content)
+					if err != nil {
+						return err
+					}
+				}
+			}()
+			buffered := buf.String()
+			if err == nil {
+				err = m.store.SaveStreamResults(ctx, buffered, usage, err)
+			}
+			csm.Close(err)
+		}()
+		return csm
+	}
+}
+
 func (m controlModel) complete(msg string) tea.Cmd {
 	return func() tea.Msg {
 		start := time.Now()

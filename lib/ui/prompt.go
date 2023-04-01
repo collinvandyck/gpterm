@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/collinvandyck/gpterm/lib/errs"
+	"github.com/collinvandyck/gpterm/lib/ui/command"
 )
 
 var _ tea.Model = promptModel{}
@@ -76,6 +77,9 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case completion:
 		m.inflight = false
 
+	case command.StreamCompletionResult:
+		m.inflight = false
+
 	case helpMsg:
 		m.help = msg.help
 
@@ -98,6 +102,12 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				cmds.Add(m.getPrevious(-1))
 			}
+		case tea.KeyCtrlR:
+			if msg.Alt {
+				cmds.Add(func() tea.Msg { return command.StreamCompletionReq{Dummy: true} })
+				m.inflight = true
+			}
+
 		case tea.KeyEnter:
 			if m.inflight {
 				break
@@ -106,7 +116,11 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if text == "" {
 				break
 			}
-			cmds = append(cmds, m.complete(text))
+			if msg.Alt {
+				cmds = append(cmds, m.complete(text))
+			} else {
+				cmds = append(cmds, m.stream(text))
+			}
 			m.ta.Reset()
 			m.inflight = true
 		}
@@ -118,7 +132,7 @@ func (m promptModel) View() string {
 	if !m.ready {
 		return ""
 	}
-	return m.ta.View() + "\n"
+	return m.ta.View()
 }
 
 func (m promptModel) getPrevious(inc int) tea.Cmd {
@@ -152,9 +166,15 @@ func (m promptModel) getPrevious(inc int) tea.Cmd {
 	}
 }
 
+func (m promptModel) stream(msg string) tea.Cmd {
+	return func() tea.Msg {
+		return command.StreamCompletionReq{Text: msg}
+	}
+}
+
 func (m promptModel) complete(msg string) tea.Cmd {
 	return func() tea.Msg {
-		return completionReq{msg}
+		return completionReq{text: msg}
 	}
 }
 

@@ -60,6 +60,7 @@ func (c *client) Stream(ctx context.Context, latest []query.Message, content str
 	req := openai.ChatCompletionRequest{
 		Model:    c.model,
 		Messages: messages,
+		Stream:   true,
 	}
 	resp, err := c.openai.CreateChatCompletionStream(ctx, req)
 	if err != nil {

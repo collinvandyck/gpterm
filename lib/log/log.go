@@ -23,6 +23,13 @@ var maxPrefixLenMut sync.Mutex
 
 type Option func(*logger)
 
+func WithWriter(w io.Writer) Option {
+	return func(l *logger) {
+		l.out = w
+		l.err = w
+	}
+}
+
 func WithStdout(w io.Writer) Option {
 	return func(l *logger) {
 		l.out = w

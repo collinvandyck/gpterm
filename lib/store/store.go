@@ -199,8 +199,7 @@ func (s *Store) GetLastMessages(ctx context.Context, count int) ([]query.Message
 	return s.queries.GetLatestMessages(ctx, int64(count))
 }
 
-func (s *Store) SaveRequestResponse(ctx context.Context, req openai.ChatCompletionRequest, resp openai.ChatCompletionResponse) error {
-	// save the last message in the request. that skips the context messages
+func (s *Store) SaveRequest(ctx context.Context, req openai.ChatCompletionRequest) error {
 	if len(req.Messages) > 1 {
 		m := req.Messages[len(req.Messages)-1]
 		err := s.queries.InsertMessage(ctx, query.InsertMessageParams{
@@ -210,6 +209,34 @@ func (s *Store) SaveRequestResponse(ctx context.Context, req openai.ChatCompleti
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (s *Store) SaveStreamResults(ctx context.Context, text string, usage openai.Usage, failure error) error {
+	err := s.queries.InsertMessage(ctx, query.InsertMessageParams{
+		Role:    "assistant",
+		Content: strings.TrimSpace(text),
+	})
+	if err != nil {
+		return err
+	}
+	err = s.queries.InsertUsage(ctx, query.InsertUsageParams{
+		PromptTokens:     int64(usage.PromptTokens),
+		CompletionTokens: int64(usage.CompletionTokens),
+		TotalTokens:      int64(usage.TotalTokens),
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Store) SaveRequestResponse(ctx context.Context, req openai.ChatCompletionRequest, resp openai.ChatCompletionResponse) error {
+	// save the last message in the request. that skips the context messages
+	err := s.SaveRequest(ctx, req)
+	if err != nil {
+		return err
 	}
 	// save all responses
 	for _, choice := range resp.Choices {
@@ -223,7 +250,7 @@ func (s *Store) SaveRequestResponse(ctx context.Context, req openai.ChatCompleti
 		}
 	}
 	// save usage
-	err := s.queries.InsertUsage(ctx, query.InsertUsageParams{
+	err = s.queries.InsertUsage(ctx, query.InsertUsageParams{
 		PromptTokens:     int64(resp.Usage.PromptTokens),
 		CompletionTokens: int64(resp.Usage.CompletionTokens),
 		TotalTokens:      int64(resp.Usage.TotalTokens),

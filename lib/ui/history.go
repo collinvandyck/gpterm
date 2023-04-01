@@ -17,6 +17,7 @@ type entry struct {
 	query.Message // an actul message
 	rendered      string
 	err           error // if an error happens we display it in the log
+	placeholder   bool  // true if we are waiting for a response
 }
 
 func (c *history) clear() {
@@ -30,6 +31,16 @@ func (c *history) addUserPrompt(prompt string) {
 		Content:   prompt,
 	}
 	entry := entry{Message: msg}
+	c.addEntry(entry)
+}
+
+func (c *history) addAssistantPlaceholder() {
+	msg := query.Message{
+		Timestamp: time.Now(),
+		Role:      "assistant",
+		Content:   "",
+	}
+	entry := entry{Message: msg, placeholder: true}
 	c.addEntry(entry)
 }
 

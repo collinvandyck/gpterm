@@ -23,3 +23,4 @@ CREATE TABLE message (
 	conversation_id integer not null default 0,
 	FOREIGN KEY (conversation_id) REFERENCES conversation(id)
 );
+CREATE INDEX message_conversation_id on message (conversation_id);
