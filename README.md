@@ -2,9 +2,9 @@
 
 gpterm is a terminal-based integration with the OpenAI chat API.
 
-# Screenshots
+# Demo
 
-![gpterm screenshot](gpterm.png)
+https://user-images.githubusercontent.com/596076/229314588-98bf28df-56bb-48d3-921a-095300381416.mp4
 
 # Installation
 
