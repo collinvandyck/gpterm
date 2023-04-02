@@ -102,7 +102,6 @@ func (m controlModel) View() string {
 	var res string
 	tv := m.typewriter.View()
 	if strings.TrimSpace(tv) != "" {
-		m.Info("Printed tw view")
 		res += tv
 		res += "\n"
 	}
@@ -423,6 +422,7 @@ func (m controlModel) completeStream(msg string) tea.Cmd {
 					}
 
 					// each time we get a response we accumulate the usage
+					m.Info("usage: %+v", sr.Usage)
 					usage.TotalTokens += sr.Usage.TotalTokens
 					usage.PromptTokens += sr.Usage.PromptTokens
 					usage.CompletionTokens += sr.Usage.CompletionTokens

@@ -20,9 +20,10 @@ import (
 )
 
 var (
-	logfile       string
-	pprof         bool
-	clientContext int
+	logfile        string
+	requestLogfile string
+	pprof          bool
+	clientContext  int
 )
 
 var root = &cobra.Command{
@@ -34,12 +35,21 @@ var root = &cobra.Command{
 	Aliases:      []string{"repl"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		fileWriter, err := log.FileWriter(logfile)
+
+		lw, err := log.FileWriter(logfile)
 		if err != nil {
 			return err
 		}
-		defer fileWriter.Close()
-		logger := log.New(log.WithWriter(fileWriter))
+		defer lw.Close()
+		logger := log.New(log.WithWriter(lw))
+
+		rw, err := log.FileWriter(requestLogfile)
+		if err != nil {
+			return err
+		}
+		defer rw.Close()
+		requestLogger := log.New(log.WithWriter(rw))
+
 		store, err := store.New(store.StoreLog(log.Prefixed("store", logger)))
 		if err != nil {
 			return fmt.Errorf("new store: %w", err)
@@ -54,7 +64,7 @@ var root = &cobra.Command{
 			fmt.Fprintln(os.Stderr, fmt.Sprintf("%s auth", cmd.Root().Use))
 			os.Exit(1)
 		}
-		client, err := client.New(key)
+		client, err := client.New(key, client.WithRequestLogger(requestLogger))
 		if err != nil {
 			return fmt.Errorf("new client: %w", err)
 		}
@@ -65,6 +75,7 @@ var root = &cobra.Command{
 
 func init() {
 	root.Flags().StringVar(&logfile, "log", "", "log to this file")
+	root.Flags().StringVar(&requestLogfile, "request-log", "", "log requests to this file")
 	root.Flags().BoolVar(&pprof, "pprof", false, "start pprof http server in background")
 	root.Flags().IntVarP(&clientContext, "context-size", "c", 5, "number of messages to send as context")
 

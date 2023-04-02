@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/collinvandyck/gpterm/db/query"
@@ -20,12 +21,19 @@ type client struct {
 }
 
 func New(apiKey string, opts ...Option) (Client, error) {
+	config := openai.DefaultConfig(apiKey)
+	rt := &roundTripper{
+		RoundTripper: http.DefaultTransport,
+	}
+	httpClient := &http.Client{Transport: rt}
+	config.HTTPClient = httpClient
+	oaiClient := openai.NewClientWithConfig(config)
 	res := &client{
-		openai: *openai.NewClient(apiKey),
+		openai: *oaiClient,
 		model:  openai.GPT3Dot5Turbo,
 	}
 	for _, o := range opts {
-		o(res)
+		o(res, rt)
 	}
 	return res, nil
 }
