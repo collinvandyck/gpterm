@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/collinvandyck/gpterm/lib/git"
-	"github.com/collinvandyck/gpterm/lib/log"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +36,7 @@ func Deps() *cobra.Command {
 				default:
 					continue
 				}
-				log.Println("Installing %s", pkg)
+				fmt.Printf("Installing %s\n", pkg)
 				ec := exec.Command("go", "install", pkg)
 				out, err := ec.CombinedOutput()
 				if err != nil {

@@ -1,11 +1,11 @@
 package db
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/collinvandyck/gpterm/lib/log"
 	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/spf13/cobra"
 )
@@ -31,7 +31,7 @@ func Sqlite() *cobra.Command {
 			}
 			var ec *exec.Cmd
 			if len(args) > 0 {
-				log.Println("Executing sqlite3 %s '%s'", dbPath, strings.Join(args, " "))
+				fmt.Printf("Executing sqlite3 %s '%s'\n", dbPath, strings.Join(args, " "))
 				ec = exec.Command("sqlite3", dbPath, strings.Join(args, " "))
 			} else {
 				ec = exec.Command("sqlite3", dbPath)

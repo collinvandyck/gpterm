@@ -11,7 +11,6 @@ import (
 
 	"github.com/collinvandyck/gpterm/db"
 	"github.com/collinvandyck/gpterm/lib/git"
-	"github.com/collinvandyck/gpterm/lib/log"
 	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
@@ -61,7 +60,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			log.Println("Migrating up")
+			fmt.Println("Migrating up")
 			err = mg.Up()
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):
@@ -88,7 +87,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			log.Println("Migrating down")
+			fmt.Println("Migrating down")
 			err = mg.Down()
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):
@@ -120,7 +119,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			log.Println("Stepping %d", n)
+			fmt.Printf("Stepping %d\n", n)
 			err = mg.Steps(int(n))
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):
