@@ -73,7 +73,6 @@ func (m typewriterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.reset()
 
 	case tea.WindowSizeMsg:
-		m.Info("window size: %d x %d", msg.Width, msg.Height)
 		m.width = msg.Width
 		m.height = msg.Height
 

@@ -37,7 +37,7 @@ func Deps() *cobra.Command {
 				default:
 					continue
 				}
-				log.Info("Installing %s", pkg)
+				log.Println("Installing %s", pkg)
 				ec := exec.Command("go", "install", pkg)
 				out, err := ec.CombinedOutput()
 				if err != nil {

@@ -67,7 +67,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.GotoBottom()
 
 	case historyLoaded:
-		m.Info("Loaded %d chatlog messages", len(msg.messages))
+		m.Log("Loaded chatlog", "count", len(msg.messages))
 		m.history.addAll(msg.messages, msg.err)
 		m.render()
 		m.viewport.GotoBottom()
@@ -119,7 +119,7 @@ func (m *chatModel) render() {
 }
 
 func (m *chatModel) doRender(force bool) {
-	m.Info("Rendering chat force=%v", force)
+	m.Log("Rendering chat", "force", force)
 	if m.buf == nil {
 		m.buf = bytes.NewBuffer(make([]byte, 0, 4096))
 	}

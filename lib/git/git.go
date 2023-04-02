@@ -11,7 +11,7 @@ import (
 func MustProjectDir() string {
 	dir, err := ProjectDir()
 	if err != nil {
-		log.Error("No project dir detected")
+		log.Println("No project dir detected", "err", err)
 		os.Exit(1)
 	}
 	return dir

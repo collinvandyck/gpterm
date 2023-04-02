@@ -31,7 +31,7 @@ func Sqlite() *cobra.Command {
 			}
 			var ec *exec.Cmd
 			if len(args) > 0 {
-				log.Info("Executing sqlite3 %s '%s'", dbPath, strings.Join(args, " "))
+				log.Println("Executing sqlite3 %s '%s'", dbPath, strings.Join(args, " "))
 				ec = exec.Command("sqlite3", dbPath, strings.Join(args, " "))
 			} else {
 				ec = exec.Command("sqlite3", dbPath)

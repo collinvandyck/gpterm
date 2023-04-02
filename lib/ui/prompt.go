@@ -47,11 +47,11 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.Info("Prompt disabled")
+		m.Log("Prompt disabled")
 		m.ready = false
 		m.width = msg.Width
 	case reloaded:
-		m.Info("Reloaded")
+		m.Log("Reloaded")
 		if !m.ready {
 			m.ta = textarea.New()
 			m.ta.Placeholder = "..."
@@ -64,7 +64,6 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.ta.SetWidth(m.width)
 		m.ta.SetHeight(m.height)
-		m.Info("prompt width: %d", m.width)
 		m.ready = true
 	case promptHistory:
 		switch {

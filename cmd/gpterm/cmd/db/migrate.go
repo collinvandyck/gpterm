@@ -38,7 +38,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			ec := exec.Command("migrate", "create", "-ext", "sql", "-dir", "migrations", "-seq", args[0])
 			out, err := ec.CombinedOutput()
 			if err != nil {
-				log.Error(string(out))
+				fmt.Fprintln(os.Stderr, string(out))
 				return err
 			}
 			return nil
@@ -61,7 +61,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			log.Info("Migrating up")
+			log.Println("Migrating up")
 			err = mg.Up()
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):
@@ -88,7 +88,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			log.Info("Migrating down")
+			log.Println("Migrating down")
 			err = mg.Down()
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):
@@ -120,7 +120,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			log.Info("Stepping %d", n)
+			log.Println("Stepping %d", n)
 			err = mg.Steps(int(n))
 			switch {
 			case errors.Is(err, migrate.ErrNoChange):

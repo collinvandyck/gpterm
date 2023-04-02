@@ -84,7 +84,7 @@ func New(opts ...StoreOpt) (*Store, error) {
 }
 
 func (s *Store) NextConversation(ctx context.Context) error {
-	s.Info("Next Conversation")
+	s.Log("Next Conversation")
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (s *Store) NextConversation(ctx context.Context) error {
 	c, err := queryTX.NextConversation(ctx)
 	switch {
 	case err == nil:
-		s.Info("Next convo found")
+		s.Log("Next convo found")
 		err = queryTX.UnsetSelectedConversation(ctx)
 		if err != nil {
 			return err
@@ -106,7 +106,7 @@ func (s *Store) NextConversation(ctx context.Context) error {
 		}
 		return tx.Commit()
 	case errs.IsDBNotFound(err):
-		s.Info("Next convo not found")
+		s.Log("Next convo not found")
 		c, err = queryTX.GetActiveConversation(ctx)
 		if err != nil {
 			return err
@@ -137,7 +137,7 @@ func (s *Store) NextConversation(ctx context.Context) error {
 }
 
 func (s *Store) PreviousConversation(ctx context.Context) error {
-	s.Info("Previous conversation")
+	s.Log("Previous conversation")
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err

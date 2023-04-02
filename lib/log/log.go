@@ -1,121 +1,119 @@
 package log
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
 type Logger interface {
-	Info(msg string, args ...any)
-	Error(msg string, args ...any)
+	Log(msg string, args ...any)
+	New(args ...any) Logger
 }
 
 var Default = New()
-var Discard = New(WithStdout(io.Discard), WithStderr(io.Discard))
-
-var maxPrefixLen int64
-var maxPrefixLenMut sync.Mutex
+var Discard = NewWriter(io.Discard)
 
 type Option func(*logger)
 
-func WithWriter(w io.Writer) Option {
-	return func(l *logger) {
-		l.out = w
-		l.err = w
+func NewWriter(w io.Writer, args ...any) Logger {
+	return &logger{
+		out:  w,
+		args: args,
 	}
 }
 
-func WithStdout(w io.Writer) Option {
-	return func(l *logger) {
-		l.out = w
-	}
+func New(args ...any) Logger {
+	return NewWriter(os.Stdout, args...)
 }
 
-func WithStderr(w io.Writer) Option {
-	return func(l *logger) {
-		l.err = w
-	}
+func Println(msg string, args ...any) {
+	Default.Log(msg, args...)
 }
 
-func Prefixed(prefix string, log Logger) Logger {
-	prefix = "[" + prefix + "]"
-	maxPrefixLenMut.Lock()
-	defer maxPrefixLenMut.Unlock()
-	if len(prefix) > int(maxPrefixLen) {
-		maxPrefixLen = int64(len(prefix))
-	}
-	return prefixedLogger{
-		Logger: log,
-		prefix: prefix,
-	}
-}
-
-type prefixedLogger struct {
-	Logger
-	prefix string
-}
-
-func (p prefixedLogger) Info(msg string, args ...any) {
-	p.Logger.Info(p.padPrefix()+" "+msg, args...)
-}
-func (p prefixedLogger) Error(msg string, args ...any) {
-	p.Logger.Error(p.padPrefix()+" "+msg, args...)
-}
-
-func (p prefixedLogger) padPrefix() string {
-	prefix := p.prefix
-	ml := int(atomic.LoadInt64(&maxPrefixLen))
-	if len(prefix) < ml {
-		prefix = prefix + strings.Repeat(" ", ml-len(p.prefix))
-	}
-	return prefix
-}
-
-func New(opts ...Option) Logger {
-	res := &logger{
-		out: os.Stdout,
-		err: os.Stderr,
-	}
-	for _, o := range opts {
-		o(res)
-	}
-	return res
-}
-
-func Info(msg string, args ...any) {
-	Default.Info(msg, args...)
-}
-
-func Error(msg string, args ...any) {
-	Default.Error(msg, args...)
-}
+var mut sync.Mutex
 
 type logger struct {
-	out       io.Writer
-	err       io.Writer
-	mut       sync.Mutex
-	printTime bool
+	out  io.Writer
+	args []any
 }
 
-func (l *logger) Info(msg string, args ...any) {
-	l.print(l.out, msg, args...)
-}
-
-func (l *logger) Error(msg string, args ...any) {
-	l.print(l.err, msg, args...)
-}
-
-func (l *logger) print(w io.Writer, msg string, args ...any) {
-	l.mut.Lock()
-	defer l.mut.Unlock()
-	if l.printTime {
-		now := time.Now().Unix()
-		msg = fmt.Sprintf("%d %s", now, msg)
+func (l *logger) New(args ...any) Logger {
+	return &logger{
+		out:  l.out,
+		args: append(l.args, args...),
 	}
-	fmt.Fprintf(w, msg+"\n", args...)
+}
+
+func (l *logger) Log(msg string, args ...any) {
+	l.println(l.out, msg, args...)
+}
+
+func (l *logger) println(w io.Writer, msg string, args ...any) {
+	rendered := l.render(msg, args...)
+	mut.Lock()
+	defer mut.Unlock()
+	fmt.Fprintln(w, rendered)
+}
+
+func (l *logger) render(msg string, args ...any) string {
+	buf := new(bytes.Buffer)
+	l.renderPair(buf, "t", time.Now())
+	l.renderPair(buf, "msg", msg)
+	l.renderArgs(buf, l.args)
+	l.renderArgs(buf, args)
+	return buf.String()
+}
+
+func (l *logger) renderArgs(buf *bytes.Buffer, args []any) {
+	for i := 0; i < len(args); i += 2 {
+		key := args[i]
+		val := args[i+1]
+		ks, ok := key.(string)
+		if !ok {
+			ks = fmt.Sprintf("%v", key)
+		}
+		l.renderPair(buf, ks, val)
+	}
+	if len(args)%2 == 1 {
+		l.renderPair(buf, "!!odd!!", args[len(args)-1])
+	}
+}
+
+func (l *logger) renderPair(buf *bytes.Buffer, key string, val any) {
+	if buf.Len() > 0 {
+		buf.WriteString(" ")
+	}
+	buf.WriteString(key)
+	buf.WriteString("=")
+	quote := func(str string) string {
+		return "\"" + str + "\""
+	}
+	maybeQuote := func(str string) string {
+		// check if we need to quote. if str has spaces, or is empty, or is a number, quote it.
+		if strings.ContainsAny(str, " \t\n") {
+			str = quote(str)
+		}
+		return str
+	}
+	switch v := val.(type) {
+	case string:
+		if key == "msg" {
+			buf.WriteString(quote(v))
+		} else {
+			buf.WriteString(maybeQuote(v))
+		}
+	case []byte:
+		buf.WriteString(maybeQuote(string(v)))
+	case time.Time:
+		ft := v.Format(time.TimeOnly)
+		buf.WriteString(maybeQuote(ft))
+	default:
+		fmt.Fprint(buf, v)
+	}
+
 }

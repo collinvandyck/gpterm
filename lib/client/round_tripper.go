@@ -25,7 +25,7 @@ func (rw *recordingWriter) Write(p []byte) (int, error) {
 }
 
 func (rw *recordingWriter) Sync() {
-	rw.log.Info(rw.buf.String())
+	rw.log.Log("Response body", "data", rw.buf.String())
 }
 
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -45,18 +45,18 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 		}()
 	}
 	if err != nil {
-		rt.log.Error(err.Error())
+		rt.log.Log("Request failed", "err", err)
 	}
 	return resp, err
 }
 
 func (rt *roundTripper) LogRequest(req *http.Request) {
-	rt.log.Info("%s %s", req.Method, req.URL)
+	rt.log.Log("Request", "method", req.Method, "url", req.URL)
 }
 
 func (rt *roundTripper) LogResponse(resp *http.Response) {
 	if resp == nil {
 		return
 	}
-	rt.log.Info("%s %s", resp.Proto, resp.Status)
+	rt.log.Log("Response", "status", resp.Status, "proto", resp.Proto)
 }

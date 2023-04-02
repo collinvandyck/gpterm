@@ -41,8 +41,8 @@ type uiOpts struct {
 	clientContext int           // how much chat context to send
 }
 
-func (uiOpts uiOpts) WithLogPrefix(prefix string) uiOpts {
-	uiOpts.Logger = log.Prefixed(prefix, uiOpts.Logger)
+func (uiOpts uiOpts) NamedLogger(prefix string) uiOpts {
+	uiOpts.Logger = uiOpts.Logger.New("name", prefix)
 	return uiOpts
 }
 
@@ -57,7 +57,7 @@ func (t *console) Run(ctx context.Context) error {
 
 	//termbox.Init()
 
-	t.Info("\ngpterm starting...\n")
+	t.Log("gpterm starting...")
 	model := newControlModel(t.uiOpts)
 
 	// Note that using the alt screen buffer hampers our ability to print

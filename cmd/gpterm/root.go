@@ -41,16 +41,16 @@ var root = &cobra.Command{
 			return err
 		}
 		defer lw.Close()
-		logger := log.New(log.WithWriter(lw))
+		logger := log.NewWriter(lw)
 
 		rw, err := log.FileWriter(requestLogfile)
 		if err != nil {
 			return err
 		}
 		defer rw.Close()
-		requestLogger := log.New(log.WithWriter(rw))
+		requestLogger := log.NewWriter(rw)
 
-		store, err := store.New(store.StoreLog(log.Prefixed("store", logger)))
+		store, err := store.New(store.StoreLog(logger.New("name", "store")))
 		if err != nil {
 			return fmt.Errorf("new store: %w", err)
 		}
@@ -92,7 +92,7 @@ func main() {
 			address := "localhost:6060"
 			err := http.ListenAndServe(address, nil)
 			if err != nil {
-				log.Error("Failed to start pprof HTTP server: %v", err)
+				fmt.Fprintf(os.Stderr, "Failed to start pprof HTTP server: %v\n", err)
 				os.Exit(1)
 			}
 		}()

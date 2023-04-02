@@ -58,9 +58,9 @@ type helpMsg struct {
 
 func newControlModel(uiOpts uiOpts) controlModel {
 	res := controlModel{
-		uiOpts: uiOpts.WithLogPrefix("control"),
+		uiOpts: uiOpts.NamedLogger("control"),
 		chat: chatModel{
-			uiOpts: uiOpts.WithLogPrefix("chat"),
+			uiOpts: uiOpts.NamedLogger("chat"),
 			history: history{
 				uiOpts:     uiOpts,
 				maxEntries: defaultChatlogMaxSize,
@@ -72,13 +72,13 @@ func newControlModel(uiOpts uiOpts) controlModel {
 			maxEntries: defaultChatlogMaxSize,
 		},
 		prompt: promptModel{
-			uiOpts: uiOpts.WithLogPrefix("prompt"),
+			uiOpts: uiOpts.NamedLogger("prompt"),
 			height: 3,
 		},
 		typewriter: typewriterModel{
-			uiOpts: uiOpts.WithLogPrefix("typewriter"),
+			uiOpts: uiOpts.NamedLogger("typewriter"),
 		},
-		status: newStatusModel(uiOpts.WithLogPrefix("status")),
+		status: newStatusModel(uiOpts.NamedLogger("status")),
 	}
 	return res
 }
@@ -124,21 +124,21 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.historyPrinted = false
 
 	case reloaded:
-		m.Info("Reloaded")
+		m.Log("Reloaded")
 		m.ready = true
 		if m.historyLoaded && !m.historyPrinted {
-			m.Info("Printing history after reloaded")
+			m.Log("Printing history after reloaded")
 			cmds.Add(m.printHistory())
 		}
 
 	case redrawMsg:
 		if m.historyLoaded && !m.historyPrinted {
-			m.Info("Printing history after redraw")
+			m.Log("Printing history after redraw")
 			cmds.Add(m.printHistory())
 		}
 
 	case tea.WindowSizeMsg:
-		m.Info("Window size changed (w=%d h=%d)", msg.Width, msg.Height)
+		m.Log("Window size changed", "width", msg.Width, "height", msg.Height)
 		m.ready = false
 		m.historyPrinted = false
 		m.width = msg.Width
@@ -146,16 +146,16 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds.Add(m.resetCmd())
 
 	case convoMsg:
-		m.Info("Convo switch err=%v", msg.err)
+		m.Log("Convo switch", "err", msg.err)
 
 	case historyPrinted:
-		m.Info("History printed")
+		m.Log("History printed")
 		m.historyPrinted = true
 
 	case historyLoaded:
 		m.history.addAll(msg.messages, msg.err)
 		m.historyLoaded = true
-		m.Info("Loaded %d history entries", len(m.history.entries))
+		m.Log("Loaded history", "len", len(m.history.entries))
 		if !m.historyPrinted {
 			cmds.Add(m.printHistory())
 		}
@@ -182,7 +182,6 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case command.StreamCompletion:
 	case command.StreamCompletionResult:
-		m.Info("Got stream completion result len=%d err=%v", len(msg.Text), msg.Err)
 		m.inflight = false
 		m.history.entries[len(m.history.entries)-1].Message.Content = msg.Text
 		m.history.entries[len(m.history.entries)-1].err = msg.Err
@@ -241,7 +240,7 @@ type convoMsg struct {
 func (m controlModel) nextConvo() tea.Cmd {
 	return tea.Sequence(
 		func() tea.Msg {
-			m.Info("Switching to next convo")
+			m.Log("Switching to next convo")
 			ctx := context.Background()
 			err := m.store.NextConversation(ctx)
 			return convoMsg{err: err}
@@ -255,7 +254,7 @@ func (m controlModel) nextConvo() tea.Cmd {
 func (m controlModel) prevConvo() tea.Cmd {
 	return tea.Sequence(
 		func() tea.Msg {
-			m.Info("Switching to prev convo")
+			m.Log("Switching to prev convo")
 			ctx := context.Background()
 			err := m.store.PreviousConversation(ctx)
 			return convoMsg{err: err}
@@ -283,14 +282,14 @@ func resetHistory() tea.Msg {
 func (m controlModel) resetCmd() tea.Cmd {
 	return tea.Sequence(
 		tea.ClearScreen,
-		func() tea.Msg { m.Info("Clearing scrollback"); term.ClearScrollback(); return nil },
+		func() tea.Msg { m.Log("Clearing scrollback"); term.ClearScrollback(); return nil },
 		func() tea.Msg { return reloaded{} },
 	)
 }
 
 func (m controlModel) printLastHistories(count int) tea.Cmd {
 	commands := []tea.Cmd{}
-	m.Info("Printing last %d historic entries", count)
+	m.Log("Printing last historic entries", "count", count)
 	for i := 0; i < count; i++ {
 		buf := bytes.Buffer{}
 		he := m.history.entries[len(m.history.entries)-count+i]
@@ -305,7 +304,7 @@ func (m controlModel) printLastHistories(count int) tea.Cmd {
 }
 
 func (m controlModel) printLastHistory() tea.Cmd {
-	m.Info("Printing last historic entry")
+	m.Log("Printing last historic entry")
 	buf := bytes.Buffer{}
 	he := m.history.entries[len(m.history.entries)-1]
 	re := m.renderEntry(he)
@@ -317,8 +316,8 @@ func (m controlModel) printLastHistory() tea.Cmd {
 }
 
 func (m controlModel) printHistory() tea.Cmd {
-	m.Info("Printing %d historic entries", len(m.history.entries))
-	defer m.Info("Done printing")
+	m.Log("Printing history", "len", len(m.history.entries))
+	defer m.Log("Done printing")
 	buf := bytes.Buffer{}
 	for i, he := range m.history.entries {
 		re := m.renderEntry(he)
@@ -413,10 +412,10 @@ func (m controlModel) completeStream(msg string) tea.Cmd {
 					sr, err := res.Recv()
 					switch {
 					case errors.Is(err, io.EOF):
-						m.Info("EOF")
+						m.Log("EOF")
 						return nil
 					case err != nil:
-						m.Info("err: %v", err)
+						m.Log("Stream result failure", "err", err)
 						return fmt.Errorf("recv: %w", err)
 					}
 
@@ -461,14 +460,14 @@ func (m controlModel) complete(msg string) tea.Cmd {
 			return completion{err: fmt.Errorf("store resp: %w", err)}
 		}
 		dur := time.Since(start).Truncate(time.Millisecond)
-		m.Info("Completion request completed in %s (%d context)", dur, m.clientContext)
+		m.Log("Completion done", "dur", dur, "ctx", m.clientContext)
 		return completion{res.Response.Choices, err}
 	}
 }
 
 func (m controlModel) loadHistory() tea.Cmd {
 	return func() tea.Msg {
-		m.Info("Loading history")
+		m.Log("Loading history")
 		ctx, cancel := context.WithTimeout(context.Background(), m.clientTimeout)
 		defer cancel()
 		msgs, err := m.store.GetLastMessages(ctx, defaultChatlogMaxSize)
