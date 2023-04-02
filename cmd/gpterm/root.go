@@ -19,8 +19,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var logfile string
-var pprof bool
+var (
+	logfile       string
+	pprof         bool
+	clientContext int
+)
 
 var root = &cobra.Command{
 	Use:          filepath.Base(os.Args[0]),
@@ -63,6 +66,7 @@ var root = &cobra.Command{
 func init() {
 	root.Flags().StringVar(&logfile, "log", "", "log to this file")
 	root.Flags().BoolVar(&pprof, "pprof", false, "start pprof http server in background")
+	root.Flags().IntVarP(&clientContext, "context-size", "c", 5, "number of messages to send as context")
 
 	root.AddCommand(cmd.Auth())
 	root.AddCommand(cmd.Deps())
