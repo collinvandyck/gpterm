@@ -4,5 +4,11 @@ set -e
 
 root=$(git rev-parse --show-toplevel)
 pkg=github.com/collinvandyck/gpterm/cmd/gpterm
-exec go run $pkg $@
+args=""
+
+if [[ $# -eq 0 ]]; then
+	args="--log ${root}/gpterm.log --request-log ${root}/request.log"
+fi
+
+go run $pkg $args $@
 

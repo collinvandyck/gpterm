@@ -13,6 +13,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	markdown "github.com/collinvandyck/go-term-markdown"
+	"github.com/collinvandyck/gpterm/db/query"
 	"github.com/collinvandyck/gpterm/lib/term"
 	"github.com/collinvandyck/gpterm/lib/ui/command"
 	"github.com/sashabaranov/go-openai"
@@ -25,7 +26,6 @@ const (
 type controlModel struct {
 	uiOpts
 	prompt         tea.Model
-	chat           tea.Model
 	status         tea.Model
 	typewriter     tea.Model
 	history        history
@@ -38,15 +38,6 @@ type controlModel struct {
 	inflight       bool
 }
 
-type completionReq struct {
-	text string
-}
-
-type completion struct {
-	choices []openai.ChatCompletionChoice
-	err     error
-}
-
 type historyPrinted struct{}
 
 type reloaded struct {
@@ -56,18 +47,14 @@ type helpMsg struct {
 	help bool
 }
 
+type historyLoaded struct {
+	messages []query.Message
+	err      error
+}
+
 func newControlModel(uiOpts uiOpts) controlModel {
 	res := controlModel{
 		uiOpts: uiOpts.NamedLogger("control"),
-		chat: chatModel{
-			uiOpts: uiOpts.NamedLogger("chat"),
-			history: history{
-				uiOpts:     uiOpts,
-				maxEntries: defaultChatlogMaxSize,
-			},
-			heightOffset: -4,
-			styles:       newStaticStyles(),
-		},
 		history: history{
 			maxEntries: defaultChatlogMaxSize,
 		},
@@ -186,19 +173,6 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.history.entries[len(m.history.entries)-1].Message.Content = msg.Text
 		m.history.entries[len(m.history.entries)-1].err = msg.Err
 		m.history.entries[len(m.history.entries)-1].placeholder = false
-
-	case completionReq:
-		m.inflight = true
-		m.history.addUserPrompt(msg.text)
-		cmds.Add(tea.Sequence(
-			m.printLastHistory(),
-			m.complete(msg.text),
-		))
-
-	case completion:
-		m.inflight = false
-		m.history.addCompletion(msg.choices, msg.err)
-		cmds.Add(m.printLastHistory())
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -439,29 +413,6 @@ func (m controlModel) completeStream(msg string) tea.Cmd {
 			csm.Close(err)
 		}()
 		return csm
-	}
-}
-
-func (m controlModel) complete(msg string) tea.Cmd {
-	return func() tea.Msg {
-		start := time.Now()
-		ctx, cancel := context.WithTimeout(context.Background(), m.clientTimeout)
-		defer cancel()
-		latest, err := m.store.GetLastMessages(ctx, m.clientContext)
-		if err != nil {
-			return completion{err: fmt.Errorf("load context: %w", err)}
-		}
-		res, err := m.client.Complete(ctx, latest, msg)
-		if err != nil {
-			return completion{err: fmt.Errorf("failed to complete: %w", err)}
-		}
-		err = m.store.SaveRequestResponse(ctx, res.Req, res.Response)
-		if err != nil {
-			return completion{err: fmt.Errorf("store resp: %w", err)}
-		}
-		dur := time.Since(start).Truncate(time.Millisecond)
-		m.Log("Completion done", "dur", dur, "ctx", m.clientContext)
-		return completion{res.Response.Choices, err}
 	}
 }
 

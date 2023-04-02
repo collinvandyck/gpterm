@@ -73,8 +73,6 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ta.SetValue(m.save)
 		}
 		m.idx = msg.idx
-	case completion:
-		m.inflight = false
 
 	case command.StreamCompletionResult:
 		m.inflight = false
@@ -115,11 +113,7 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if text == "" {
 				break
 			}
-			if msg.Alt {
-				cmds = append(cmds, m.complete(text))
-			} else {
-				cmds = append(cmds, m.stream(text))
-			}
+			cmds = append(cmds, m.stream(text))
 			m.ta.Reset()
 			m.inflight = true
 		}
@@ -168,12 +162,6 @@ func (m promptModel) getPrevious(inc int) tea.Cmd {
 func (m promptModel) stream(msg string) tea.Cmd {
 	return func() tea.Msg {
 		return command.StreamCompletionReq{Text: msg}
-	}
-}
-
-func (m promptModel) complete(msg string) tea.Cmd {
-	return func() tea.Msg {
-		return completionReq{text: msg}
 	}
 }
 

@@ -10,9 +10,13 @@ import (
 
 func Usage() *cobra.Command {
 	return &cobra.Command{
-		Use:   "usage",
-		Short: "Display usage",
+		Use:        "usage",
+		Short:      "Display usage",
+		Deprecated: "stream responses do not yet include usage data",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Deprecated != "" {
+				return nil
+			}
 			ctx := context.Background()
 			store, err := store.New()
 			if err != nil {

@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/collinvandyck/gpterm/lib/ui/command"
 )
 
 var _ tea.Model = statusModel{}
@@ -47,11 +48,11 @@ func (m statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case reloaded:
 		m.ready = true
 
-	case completionReq:
+	case command.StreamCompletionReq:
 		m.spin = true
 		cmds.Add(m.tick())
 
-	case completion:
+	case command.StreamCompletionResult:
 		m.spin = false
 
 	case spinner.TickMsg:
