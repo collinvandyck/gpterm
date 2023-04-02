@@ -12,7 +12,7 @@ Requirements:
 
 - Go 1.18 or higher
 - GOPATH env variable set (install will write to `$GOPATH/bin`)
-- OpenAPI API Key
+- OpenAI API Key
 
 To install from source:
 
@@ -22,7 +22,7 @@ To install from source:
 
 # Getting Started
 
-Because it uses the OpenAPI API, and API key is required before you can start:
+Because it uses the OpenAI API, an API key is required before you can start:
 
 	# set api key
 	gpterm auth
@@ -56,7 +56,7 @@ Chat history and your API key are stored in a sqlite database in:
 
 ## Configurable Roles
 
-Users will be able to instruct OpenAPI how to act. Currently it's hardcoded to `You are a helpful assistant.`
+Users will be able to instruct OpenAI how to act. Currently it's hardcoded to `You are a helpful assistant.`
 
 Additionally, users should be able to change the name of the assistant as rendered in the chatlog. Current it is `ChatGPT`.
 
