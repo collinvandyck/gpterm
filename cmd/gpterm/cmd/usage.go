@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/collinvandyck/gpterm/lib/log"
 	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/spf13/cobra"
 )
@@ -26,10 +26,14 @@ func Usage() *cobra.Command {
 			// gpt-3.5-turbo cost is $0.002 / 1K tokens
 			cost := 0.002 * (float64(usage.TotalTokens) / 1000)
 
-			log.Println("Prompt:     %d", usage.PromptTokens)
-			log.Println("Completion: %d", usage.CompletionTokens)
-			log.Println("Total:      %d", usage.TotalTokens)
-			log.Println("Cost:       $%0.02f ($0.002 per 1K tokens)", cost)
+			print := func(val string, args ...any) {
+				fmt.Printf(val+"\n", args...)
+			}
+
+			print("Prompt:     %d", usage.PromptTokens)
+			print("Completion: %d", usage.CompletionTokens)
+			print("Total:      %d", usage.TotalTokens)
+			print("Cost:       $%0.02f ($0.002 per 1K tokens)", cost)
 
 			return nil
 		},
