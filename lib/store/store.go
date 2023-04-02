@@ -221,13 +221,16 @@ func (s *Store) SaveStreamResults(ctx context.Context, text string, usage openai
 	if err != nil {
 		return err
 	}
-	err = s.queries.InsertUsage(ctx, query.InsertUsageParams{
-		PromptTokens:     int64(usage.PromptTokens),
-		CompletionTokens: int64(usage.CompletionTokens),
-		TotalTokens:      int64(usage.TotalTokens),
-	})
-	if err != nil {
-		return err
+	// only record usage if it was reported.
+	if usage.PromptTokens+usage.CompletionTokens+usage.TotalTokens > 0 {
+		err = s.queries.InsertUsage(ctx, query.InsertUsageParams{
+			PromptTokens:     int64(usage.PromptTokens),
+			CompletionTokens: int64(usage.CompletionTokens),
+			TotalTokens:      int64(usage.TotalTokens),
+		})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

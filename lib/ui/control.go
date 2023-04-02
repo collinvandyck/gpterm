@@ -399,7 +399,6 @@ func (m controlModel) completeStream(msg string) tea.Cmd {
 				if err != nil {
 					return fmt.Errorf("load context: %w", err)
 				}
-				// todo: save request into store
 				streamResult, err := m.client.Stream(ctx, latest, msg)
 				if err != nil {
 					return fmt.Errorf("failed to complete: %w", err)
@@ -422,7 +421,6 @@ func (m controlModel) completeStream(msg string) tea.Cmd {
 					}
 
 					// each time we get a response we accumulate the usage
-					m.Info("usage: %+v", sr.Usage)
 					usage.TotalTokens += sr.Usage.TotalTokens
 					usage.PromptTokens += sr.Usage.PromptTokens
 					usage.CompletionTokens += sr.Usage.CompletionTokens
