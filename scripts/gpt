@@ -5,6 +5,12 @@
 set -e
 
 root=$(git rev-parse --show-toplevel)
-cmd=github.com/collinvandyck/gpterm/cmd/gpterm
-exec go run $cmd --log "${root}/gpterm.log" --request-log "${root}/request.log"  $@
+pkg=github.com/collinvandyck/gpterm/cmd/gpterm
+
+# it's faster to build beforehand because "go build" is a bit smarter than "go run"
+# about what needs to be rebuilt
+
+go build -o "${root}/bin/gpterm" $pkg
+
+exec ${root}/bin/gpterm --log "${root}/gpterm.log" --request-log "${root}/request.log"  $@
 
