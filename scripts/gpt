@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
 
-go run github.com/collinvandyck/gpterm/cmd/gpterm $@
+# Runs gpterm source with logging enabled for app and request logs.
+
+set -e
+
+root=$(git rev-parse --show-toplevel)
+cmd=github.com/collinvandyck/gpterm/cmd/gpterm
+exec go run $cmd --log "${root}/gpterm.log" --request-log "${root}/request.log"  $@
 
