@@ -24,6 +24,7 @@ func New(store *store.Store, client client.Client, opts ...Option) UI {
 			styles:        newStaticStyles(),
 			clientTimeout: time.Minute,
 			clientHistory: 5,
+			rhsPadding:    2,
 		},
 	}
 	for _, o := range opts {
@@ -39,6 +40,7 @@ type uiOpts struct {
 	styles        styles
 	clientTimeout time.Duration // how long to wait for a response
 	clientHistory int           // how many previous messages to send to the client
+	rhsPadding    int           // RHS padding for rendered markdown
 }
 
 func (uiOpts uiOpts) NamedLogger(prefix string) uiOpts {

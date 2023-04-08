@@ -69,13 +69,8 @@ func (m controlModel) View() string {
 		return ""
 	}
 	var res string
-	tv := m.typewriter.View()
-	if strings.TrimSpace(tv) != "" {
-		res += tv
-		res += "\n"
-	}
-	res += "\n" // we want a line above our prompt
-
+	res += m.typewriter.View()
+	res += "\n"
 	res += m.prompt.View()
 	res += "\n"
 	res += m.status.View()
@@ -163,6 +158,9 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.Type {
+
+		case tea.KeyCtrlY:
+			m.Log("Entering paste mode")
 
 		case tea.KeyCtrlC:
 			return m, tea.Quit
@@ -253,10 +251,9 @@ func (m controlModel) renderBacklog() string {
 }
 
 func (m controlModel) renderMessage(msg query.Message) string {
-	const rhsPad = 2
 	width := m.width
-	if width > rhsPad {
-		width -= rhsPad
+	if width > m.rhsPadding {
+		width -= m.rhsPadding
 	}
 	role := msg.Role
 	role = m.styles.Role(role)

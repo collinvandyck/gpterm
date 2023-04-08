@@ -19,45 +19,6 @@ type typewriterModel struct {
 	maxRendered int      // the max rendered lines so far
 }
 
-func (m *typewriterModel) write(part string) {
-	m.data += part
-}
-
-func (m *typewriterModel) render() {
-	data := m.data
-	stanzas := m.countCodeStanzas()
-	if stanzas%2 == 1 {
-		data += "\n" + codeStanza
-	}
-	re := string(markdown.Render(data, m.width, 0))
-	re = strings.TrimSpace(re)
-	m.rendered = strings.Split(re, "\n")
-	if len(m.rendered) > m.maxRendered {
-		m.maxRendered = len(m.rendered)
-	}
-}
-
-const codeStanza = "```"
-
-func (m *typewriterModel) countCodeStanzas() (count int) {
-	data := m.data
-	for {
-		idx := strings.Index(data, codeStanza)
-		if idx == -1 {
-			break
-		}
-		data = data[idx+len(codeStanza):]
-		count++
-	}
-	return count
-}
-
-func (m *typewriterModel) reset() {
-	m.data = ""
-	m.rendered = nil
-	m.maxRendered = 0
-}
-
 func (m typewriterModel) Init() tea.Cmd {
 	return nil
 }
@@ -81,7 +42,7 @@ func (m typewriterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.render()
 		if !msg.Done() {
-			tick := tea.Tick(10*time.Millisecond, func(time.Time) tea.Msg { return msg })
+			tick := tea.Tick(50*time.Millisecond, func(time.Time) tea.Msg { return msg })
 			cmds.Add(tick)
 			break
 		}
@@ -114,7 +75,54 @@ func (m typewriterModel) View() string {
 	}
 	lines = m.truncLines(lines)
 	res := strings.Join(lines, "\n")
-	return style.Render(res)
+	res = style.Render(res)
+	if strings.TrimSpace(res) != "" {
+		res += "\n"
+	}
+	return res
+}
+
+func (m *typewriterModel) write(part string) {
+	m.data += part
+}
+
+func (m *typewriterModel) render() {
+	data := m.data
+	stanzas := m.countCodeStanzas()
+	if stanzas%2 == 1 {
+		data += "\n" + codeStanza
+	}
+	width := m.width
+	if width > m.rhsPadding {
+		width -= m.rhsPadding
+	}
+	re := string(markdown.Render(data, width, 0))
+	re = strings.TrimSpace(re)
+	m.rendered = strings.Split(re, "\n")
+	if len(m.rendered) > m.maxRendered {
+		m.maxRendered = len(m.rendered)
+	}
+}
+
+const codeStanza = "```"
+
+func (m *typewriterModel) countCodeStanzas() (count int) {
+	data := m.data
+	for {
+		idx := strings.Index(data, codeStanza)
+		if idx == -1 {
+			break
+		}
+		data = data[idx+len(codeStanza):]
+		count++
+	}
+	return count
+}
+
+func (m *typewriterModel) reset() {
+	m.data = ""
+	m.rendered = nil
+	m.maxRendered = 0
 }
 
 func (m typewriterModel) truncLines(lines []string) []string {
