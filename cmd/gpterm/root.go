@@ -23,14 +23,12 @@ var (
 	logfile        string
 	requestLogfile string
 	pprof          bool
-	clientContext  int
+	clientHistory  int
 )
 
 var root = &cobra.Command{
 	Use:          filepath.Base(os.Args[0]),
 	Short:        "Start an interactive session with ChatGPT",
-	Long:         "Long",
-	Example:      "Example",
 	SilenceUsage: true,
 	Aliases:      []string{"repl"},
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -68,16 +66,16 @@ var root = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("new client: %w", err)
 		}
-		ui := ui.New(store, client, ui.WithLogger(logger))
+		ui := ui.New(store, client, ui.WithLogger(logger), ui.WithClientHistory(clientHistory))
 		return ui.Run(ctx)
 	},
 }
 
 func init() {
 	root.Flags().StringVar(&logfile, "log", "", "log to this file")
-	root.Flags().StringVar(&requestLogfile, "request-log", "", "log requests to this file")
+	root.Flags().StringVar(&requestLogfile, "request-log", "", "log HTTP requests to this file")
 	root.Flags().BoolVar(&pprof, "pprof", false, "start pprof http server in background")
-	root.Flags().IntVarP(&clientContext, "context-size", "c", 5, "number of messages to send as context")
+	root.Flags().IntVarP(&clientHistory, "context-size", "c", 5, "number of messages to send as context")
 
 	root.AddCommand(cmd.Auth())
 	root.AddCommand(cmd.Deps())

@@ -1,4 +1,4 @@
-package command
+package gptea
 
 import (
 	"context"
@@ -10,8 +10,7 @@ import (
 )
 
 type StreamCompletionReq struct {
-	Text  string
-	Dummy bool
+	Text string
 }
 
 type StreamCompletion struct {

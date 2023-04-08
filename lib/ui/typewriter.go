@@ -7,10 +7,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	markdown "github.com/collinvandyck/go-term-markdown"
-	"github.com/collinvandyck/gpterm/lib/ui/command"
+	"github.com/collinvandyck/gpterm/lib/ui/gptea"
 )
-
-var _ tea.Model = typewriterModel{}
 
 type typewriterModel struct {
 	uiOpts
@@ -69,14 +67,14 @@ func (m typewriterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
-	case command.StreamCompletionReq:
+	case gptea.StreamCompletionReq:
 		m.reset()
 
-	case tea.WindowSizeMsg:
+	case gptea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 
-	case command.StreamCompletion:
+	case gptea.StreamCompletion:
 		words := msg.Next()
 		for _, str := range words {
 			m.write(str)
@@ -93,7 +91,7 @@ func (m typewriterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// signal to control that we are done with the stream and these are the results
-		scr := command.StreamCompletionResult{
+		scr := gptea.StreamCompletionResult{
 			Err:  msg.Err(),
 			Text: m.data,
 		}

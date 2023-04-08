@@ -83,8 +83,9 @@ func New(opts ...StoreOpt) (*Store, error) {
 	return store, nil
 }
 
+var ErrNoMoreConversations = errors.New("no more conversations")
+
 func (s *Store) NextConversation(ctx context.Context) error {
-	s.Log("Next Conversation")
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -95,7 +96,6 @@ func (s *Store) NextConversation(ctx context.Context) error {
 	c, err := queryTX.NextConversation(ctx)
 	switch {
 	case err == nil:
-		s.Log("Next convo found")
 		err = queryTX.UnsetSelectedConversation(ctx)
 		if err != nil {
 			return err
@@ -106,7 +106,6 @@ func (s *Store) NextConversation(ctx context.Context) error {
 		}
 		return tx.Commit()
 	case errs.IsDBNotFound(err):
-		s.Log("Next convo not found")
 		c, err = queryTX.GetActiveConversation(ctx)
 		if err != nil {
 			return err
@@ -116,7 +115,7 @@ func (s *Store) NextConversation(ctx context.Context) error {
 			return err
 		}
 		if count == 0 {
-			return nil
+			return ErrNoMoreConversations
 		}
 		c, err = queryTX.CreateConversation(ctx)
 		if err != nil {
@@ -137,7 +136,6 @@ func (s *Store) NextConversation(ctx context.Context) error {
 }
 
 func (s *Store) PreviousConversation(ctx context.Context) error {
-	s.Log("Previous conversation")
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -158,7 +156,7 @@ func (s *Store) PreviousConversation(ctx context.Context) error {
 		}
 		return tx.Commit()
 	case errs.IsDBNotFound(err):
-		return nil
+		return ErrNoMoreConversations
 	default:
 		return err
 	}

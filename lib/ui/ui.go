@@ -23,7 +23,7 @@ func New(store *store.Store, client client.Client, opts ...Option) UI {
 			client:        client,
 			styles:        newStaticStyles(),
 			clientTimeout: time.Minute,
-			clientContext: 5,
+			clientHistory: 5,
 		},
 	}
 	for _, o := range opts {
@@ -38,7 +38,7 @@ type uiOpts struct {
 	client        client.Client
 	styles        styles
 	clientTimeout time.Duration // how long to wait for a response
-	clientContext int           // how much chat context to send
+	clientHistory int           // how many previous messages to send to the client
 }
 
 func (uiOpts uiOpts) NamedLogger(prefix string) uiOpts {
@@ -51,17 +51,10 @@ type console struct {
 }
 
 func (t *console) Run(ctx context.Context) error {
-	//output := termenv.DefaultOutput()
-	// cache detected color values
-	//termenv.WithColorCache(true)(output)
-
-	//termbox.Init()
-
-	t.Log("gpterm starting...")
+	t.Log("+-------------------+")
+	t.Log("| gpterm starting...|")
+	t.Log("+-------------------+")
 	model := newControlModel(t.uiOpts)
-
-	// Note that using the alt screen buffer hampers our ability to print
-	// output above our program.
 	p := tea.NewProgram(model)
 	_, err := p.Run()
 	return err

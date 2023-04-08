@@ -6,9 +6,9 @@ import (
 
 type Option func(*console)
 
-func WithClientContext(ctx int) Option {
+func WithClientHistory(history int) Option {
 	return func(c *console) {
-		c.uiOpts.clientContext = ctx
+		c.uiOpts.clientHistory = history
 	}
 }
 

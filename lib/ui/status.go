@@ -6,10 +6,8 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/collinvandyck/gpterm/lib/ui/command"
+	"github.com/collinvandyck/gpterm/lib/ui/gptea"
 )
-
-var _ tea.Model = statusModel{}
 
 type statusModel struct {
 	uiOpts
@@ -41,18 +39,15 @@ func (m statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 	switch msg := msg.(type) {
 
-	case tea.WindowSizeMsg:
-		m.ready = false
+	case gptea.WindowSizeMsg:
+		m.ready = msg.Ready
 		m.width = msg.Width
 
-	case reloaded:
-		m.ready = true
-
-	case command.StreamCompletionReq:
+	case gptea.StreamCompletionReq:
 		m.spin = true
 		cmds.Add(m.tick())
 
-	case command.StreamCompletionResult:
+	case gptea.StreamCompletionResult:
 		m.spin = false
 
 	case spinner.TickMsg:

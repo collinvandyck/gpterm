@@ -1,21 +1,20 @@
 package ui
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
-	"regexp"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	markdown "github.com/collinvandyck/go-term-markdown"
 	"github.com/collinvandyck/gpterm/db/query"
-	"github.com/collinvandyck/gpterm/lib/term"
-	"github.com/collinvandyck/gpterm/lib/ui/command"
+	"github.com/collinvandyck/gpterm/lib/store"
+	"github.com/collinvandyck/gpterm/lib/ui/gptea"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -25,39 +24,25 @@ const (
 
 type controlModel struct {
 	uiOpts
-	prompt         tea.Model
-	status         tea.Model
-	typewriter     tea.Model
-	history        history
-	historyPrinted bool // has the history been printed
-	historyLoaded  bool // has the history been loaded
-	ready          bool // has the terminal initialized
-	help           bool // if we are in help mode
-	width          int
-	height         int
-	inflight       bool
+	prompt     tea.Model
+	status     tea.Model
+	typewriter tea.Model
+	backlog    backlog // message backlog loaded from store
+	ready      bool    // has the terminal initialized
+	inflight   bool    // is there a completion in flight
+	width      int
+	height     int
 }
 
-type historyPrinted struct{}
-
-type reloaded struct {
-}
-
-type helpMsg struct {
-	help bool
-}
-
-type historyLoaded struct {
+type backlog struct {
+	set      bool
 	messages []query.Message
-	err      error
+	printed  bool
 }
 
 func newControlModel(uiOpts uiOpts) controlModel {
 	res := controlModel{
 		uiOpts: uiOpts.NamedLogger("control"),
-		history: history{
-			maxEntries: defaultChatlogMaxSize,
-		},
 		prompt: promptModel{
 			uiOpts: uiOpts.NamedLogger("prompt"),
 			height: 3,
@@ -72,7 +57,7 @@ func newControlModel(uiOpts uiOpts) controlModel {
 
 func (m controlModel) Init() tea.Cmd {
 	return tea.Batch(
-		m.loadHistory(),
+		m.loadBacklog,
 		m.prompt.Init(),
 		m.status.Init(),
 		m.typewriter.Init(),
@@ -81,9 +66,6 @@ func (m controlModel) Init() tea.Cmd {
 
 func (m controlModel) View() string {
 	if !m.ready {
-		return ""
-	}
-	if m.help {
 		return ""
 	}
 	var res string
@@ -105,74 +87,79 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
-	case resetHistoryCmd:
-		m.history.clear()
-		m.historyLoaded = false
-		m.historyPrinted = false
-
-	case reloaded:
-		m.Log("Reloaded")
-		m.ready = true
-		if m.historyLoaded && !m.historyPrinted {
-			m.Log("Printing history after reloaded")
-			cmds.Add(m.printHistory())
-		}
-
-	case redrawMsg:
-		if m.historyLoaded && !m.historyPrinted {
-			m.Log("Printing history after redraw")
-			cmds.Add(m.printHistory())
-		}
+	case gptea.WindowSizeMsg:
+		m.ready = msg.Ready
+		m.width, m.height = msg.Width, msg.Height
 
 	case tea.WindowSizeMsg:
 		m.Log("Window size changed", "width", msg.Width, "height", msg.Height)
 		m.ready = false
-		m.historyPrinted = false
-		m.width = msg.Width
-		m.height = msg.Height
-		cmds.Add(m.resetCmd())
+		m.backlog.printed = false
+		m.width, m.height = msg.Width, msg.Height
+		// when the window changes size we must send this seq
+		//
+		// 1. send a WindowSizeMsg with ready=false to disable rendering
+		// 2. clear the screen and backlog
+		// 3. render the backlog
+		// 4. send a WindowSizeMsg with ready=true to re-enable rendering
+		seq := []tea.Cmd{}
+		seq = append(seq, gptea.WindowResized(msg, false))
+		seq = append(seq, gptea.ClearScrollback)
+		seq = append(seq, m.printBacklog())
+		seq = append(seq, gptea.WindowResized(msg, true))
+		return m, tea.Sequence(seq...)
 
-	case convoMsg:
-		m.Log("Convo switch", "err", msg.err)
+	case gptea.BacklogMsg:
+		m.Log("Backlog loaded", "len", len(msg.Messages), "err", msg.Err)
+		if msg.Err != nil {
+			cmds.Add(m.error(msg.Err))
+			break
+		}
+		m.backlog.messages = msg.Messages
+		m.backlog.set = true
+		return m, m.printBacklog()
 
-	case historyPrinted:
-		m.Log("History printed")
-		m.historyPrinted = true
+	case gptea.BacklogPrintedMsg:
+		m.Log("Backlog printed")
+		m.backlog.printed = true
 
-	case historyLoaded:
-		m.history.addAll(msg.messages, msg.err)
-		m.historyLoaded = true
-		m.Log("Loaded history", "len", len(m.history.entries))
-		if !m.historyPrinted {
-			cmds.Add(m.printHistory())
+	case gptea.ConversationSwitchedMsg:
+		m.Log("ConversationSwitchedMsg", "err", msg.Err)
+		switch {
+		case errors.Is(msg.Err, store.ErrNoMoreConversations):
+		case msg.Err != nil:
+			cmds.Add(m.error(msg.Err))
+		default:
+			m.backlog.messages = msg.Messages
+			m.backlog.set = true
+			m.backlog.printed = false
+			seq := []tea.Cmd{}
+			seq = append(seq, gptea.ClearScrollback)
+			seq = append(seq, m.printBacklog())
+			return m, tea.Sequence(seq...)
 		}
 
-	case command.StreamCompletionReq:
-		if msg.Dummy {
-			entries := m.history.entries
-			if len(entries) <= 1 {
-				break
-			}
-			m.inflight = true
-			text := entries[len(entries)-1].Message.Content
-			cmds.Add(tea.Sequence(
-				m.completeStaticStream(text),
-			))
-		} else {
-			m.inflight = true
-			m.history.addUserPrompt(msg.Text)
-			m.history.addAssistantPlaceholder()
-			cmds.Add(tea.Sequence(
-				m.printLastHistories(2),
-				m.completeStream(msg.Text),
-			))
-		}
-	case command.StreamCompletion:
-	case command.StreamCompletionResult:
+	case gptea.StreamCompletionReq:
+		m.inflight = true
+		um := m.renderMessage(query.Message{
+			Role:    openai.ChatMessageRoleUser,
+			Content: msg.Text,
+		})
+		am := m.renderMessage(query.Message{
+			Role: openai.ChatMessageRoleAssistant,
+		})
+		cmds.Add(tea.Sequence(
+			tea.Println(""),
+			tea.Println(um),
+			tea.Println(am),
+			m.completeStream(msg.Text),
+		))
+
+	case gptea.StreamCompletionResult:
 		m.inflight = false
-		m.history.entries[len(m.history.entries)-1].Message.Content = msg.Text
-		m.history.entries[len(m.history.entries)-1].err = msg.Err
-		m.history.entries[len(m.history.entries)-1].placeholder = false
+		if msg.Err != nil {
+			cmds.Add(m.error(msg.Err))
+		}
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -181,194 +168,119 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case tea.KeyCtrlP:
-			if !m.inflight {
-				cmds.Add(m.prevConvo())
+			if m.ready && !m.inflight {
+				cmds.Add(m.previous)
 			}
 
 		case tea.KeyCtrlN:
-			if !m.inflight {
-				cmds.Add(m.nextConvo())
+			if m.ready && !m.inflight {
+				cmds.Add(m.next)
 			}
-
-		default:
 		}
-
 	}
+
 	m.prompt = cmds.Update(m.prompt, msg)
 	m.status = cmds.Update(m.status, msg)
 	m.typewriter = cmds.Update(m.typewriter, msg)
-
 	return m, tea.Batch(cmds...)
 }
 
-type redrawMsg struct{}
-
-func redraw() tea.Msg {
-	return redrawMsg{}
+func (m controlModel) error(err error) tea.Cmd {
+	errStr := m.renderMessage(query.Message{
+		Role:    "error",
+		Content: err.Error(),
+	})
+	errStr = strings.TrimSpace(errStr)
+	return tea.Println("\n" + errStr)
 }
 
-type convoMsg struct {
-	err error
-}
-
-func (m controlModel) nextConvo() tea.Cmd {
-	return tea.Sequence(
-		func() tea.Msg {
-			m.Log("Switching to next convo")
-			ctx := context.Background()
-			err := m.store.NextConversation(ctx)
-			return convoMsg{err: err}
-		},
-		resetHistory,
-		m.loadHistory(),
-		m.resetCmd(),
-	)
-}
-
-func (m controlModel) prevConvo() tea.Cmd {
-	return tea.Sequence(
-		func() tea.Msg {
-			m.Log("Switching to prev convo")
-			ctx := context.Background()
-			err := m.store.PreviousConversation(ctx)
-			return convoMsg{err: err}
-		},
-		resetHistory,
-		m.loadHistory(),
-		m.resetCmd(),
-	)
-}
-
-func (m controlModel) helpStatusCmd() tea.Cmd {
-	return func() tea.Msg {
-		return helpMsg{
-			help: m.help,
-		}
+func (m controlModel) next() tea.Msg {
+	ctx := m.storeContext()
+	err := m.store.NextConversation(ctx)
+	if err != nil {
+		return gptea.ConversationSwitchedMsg{Err: err}
 	}
+	msgs, err := m.store.GetLastMessages(ctx, defaultChatlogMaxSize)
+	return gptea.ConversationSwitchedMsg{Messages: msgs, Err: err}
 }
 
-type resetHistoryCmd struct{}
-
-func resetHistory() tea.Msg {
-	return resetHistoryCmd{}
-}
-
-func (m controlModel) resetCmd() tea.Cmd {
-	return tea.Sequence(
-		tea.ClearScreen,
-		func() tea.Msg { m.Log("Clearing scrollback"); term.ClearScrollback(); return nil },
-		func() tea.Msg { return reloaded{} },
-	)
-}
-
-func (m controlModel) printLastHistories(count int) tea.Cmd {
-	commands := []tea.Cmd{}
-	m.Log("Printing last historic entries", "count", count)
-	for i := 0; i < count; i++ {
-		buf := bytes.Buffer{}
-		he := m.history.entries[len(m.history.entries)-count+i]
-		re := m.renderEntry(he)
-		re = strings.TrimSpace(re)
-		buf.WriteString("\n")
-		buf.WriteString(re)
-		out := buf.String()
-		commands = append(commands, tea.Println(out))
+func (m controlModel) previous() tea.Msg {
+	ctx := m.storeContext()
+	err := m.store.PreviousConversation(ctx)
+	if err != nil {
+		return gptea.ConversationSwitchedMsg{Err: err}
 	}
-	return tea.Sequence(commands...)
+	msgs, err := m.store.GetLastMessages(ctx, defaultChatlogMaxSize)
+	return gptea.ConversationSwitchedMsg{Messages: msgs, Err: err}
 }
 
-func (m controlModel) printLastHistory() tea.Cmd {
-	m.Log("Printing last historic entry")
-	buf := bytes.Buffer{}
-	he := m.history.entries[len(m.history.entries)-1]
-	re := m.renderEntry(he)
-	buf.WriteString(re)
-	out := buf.String()
+func (m controlModel) loadBacklog() tea.Msg {
+	ctx := m.storeContext()
+	msgs, err := m.store.GetLastMessages(ctx, defaultChatlogMaxSize)
+	return gptea.BacklogMsg{Messages: msgs, Err: err}
+}
+
+func (m controlModel) printBacklog() tea.Cmd {
+	if !m.backlog.set || m.backlog.printed {
+		m.Log("Not printing backlog", "set", m.backlog.set, "printed", m.backlog.printed)
+		return nil
+	}
+	re := m.renderBacklog()
+	reLines := strings.Count(re, "\n") + 1
+	extra := m.height - reLines - 5
+	if extra > 0 {
+		re = strings.Repeat("\n", extra) + re
+	}
 	return tea.Sequence(
-		tea.Println(out),
+		tea.Println(re),
+		gptea.MessageCmd(gptea.BacklogPrintedMsg{}),
 	)
 }
 
-func (m controlModel) printHistory() tea.Cmd {
-	m.Log("Printing history", "len", len(m.history.entries))
-	defer m.Log("Done printing")
+func (m controlModel) renderBacklog() string {
+	start := time.Now()
 	buf := bytes.Buffer{}
-	for i, he := range m.history.entries {
-		re := m.renderEntry(he)
+	for _, msg := range m.backlog.messages {
+		re := m.renderMessage(msg)
 		re = strings.TrimSpace(re)
 		buf.WriteString(re)
-		if i < len(m.history.entries)-1 {
-			buf.WriteString("\n\n")
-		}
+		buf.WriteString("\n\n")
 	}
-	out := buf.String()
-	lines := strings.Split(out, "\n")
-	if m.height > len(lines) {
-		out = strings.Repeat("\n", m.height-len(lines)) + out
-	}
-	return tea.Sequence(
-		tea.Println(out),
-		func() tea.Msg { return historyPrinted{} },
-	)
+	re := buf.String()
+	re = strings.TrimSpace(re)
+	m.Log("Backlog rendered", "dur", time.Since(start))
+	return re
 }
 
-func (m controlModel) renderEntry(entry entry) string {
-	role := entry.Role
-	if entry.err != nil {
-		role = "error"
+func (m controlModel) renderMessage(msg query.Message) string {
+	const rhsPad = 2
+	width := m.width
+	if width > rhsPad {
+		width -= rhsPad
 	}
+	role := msg.Role
 	role = m.styles.Role(role)
-	if entry.placeholder {
-		return role
+	bs := markdown.Render(msg.Content, width, 0)
+	sc := bufio.NewScanner(bytes.NewReader(bs))
+	rendered := new(bytes.Buffer)
+	for sc.Scan() {
+		line := sc.Text()
+		line = strings.TrimRight(line, " ")
+		rendered.WriteString(line + "\n")
 	}
-	content := m.renderContent(entry)
-	return strings.Join([]string{role, content}, "\n")
-}
-
-func (m controlModel) renderContent(entry entry) string {
-	line := entry.Message.Content
-	if entry.err != nil {
-		line = fmt.Sprintf("*%v*", entry.err.Error())
-	}
-	bs := markdown.Render(line, m.width, 0)
-	line = string(bs)
-	return line
-}
-
-func (m controlModel) completeStaticStream(text string) tea.Cmd {
-	return func() tea.Msg {
-		csm := command.NewStreamCompletion()
-		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), m.clientTimeout)
-			defer cancel()
-			err := func() error {
-				pattern := regexp.MustCompile(`\S+|\s+`)
-				fields := pattern.FindAllString(text, -1)
-				for _, field := range fields {
-					err := csm.Write(ctx, field)
-					if err != nil {
-						return err
-					}
-					time.Sleep(time.Duration(rand.Int()%25) * time.Millisecond)
-				}
-				return nil
-			}()
-			csm.Close(err)
-		}()
-		return csm
-	}
+	return strings.Join([]string{role, rendered.String()}, "\n")
 }
 
 func (m controlModel) completeStream(msg string) tea.Cmd {
 	return func() tea.Msg {
-		csm := command.NewStreamCompletion()
+		csm := gptea.NewStreamCompletion()
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), m.clientTimeout)
 			defer cancel()
 			buf := new(bytes.Buffer) // we'll use this for saving the response
 			var usage openai.Usage
 			err := func() error {
-				latest, err := m.store.GetLastMessages(ctx, m.clientContext)
+				latest, err := m.store.GetLastMessages(ctx, m.clientHistory)
 				if err != nil {
 					return fmt.Errorf("load context: %w", err)
 				}
@@ -416,12 +328,6 @@ func (m controlModel) completeStream(msg string) tea.Cmd {
 	}
 }
 
-func (m controlModel) loadHistory() tea.Cmd {
-	return func() tea.Msg {
-		m.Log("Loading history")
-		ctx, cancel := context.WithTimeout(context.Background(), m.clientTimeout)
-		defer cancel()
-		msgs, err := m.store.GetLastMessages(ctx, defaultChatlogMaxSize)
-		return historyLoaded{msgs, err}
-	}
+func (m controlModel) storeContext() context.Context {
+	return context.Background()
 }

@@ -9,10 +9,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/collinvandyck/gpterm/lib/errs"
-	"github.com/collinvandyck/gpterm/lib/ui/command"
+	"github.com/collinvandyck/gpterm/lib/ui/gptea"
 )
-
-var _ tea.Model = promptModel{}
 
 type promptModel struct {
 	uiOpts
@@ -22,7 +20,6 @@ type promptModel struct {
 	idx      int    // 0 means current, positive is index in history
 	save     string // the current prompt, saved
 	inflight bool   // if a client command is in flight
-	help     bool   // if we are in help
 	width    int
 }
 
@@ -35,7 +32,6 @@ type promptHistory struct {
 
 func (m promptModel) Init() tea.Cmd {
 	return cursor.Blink
-	//return nil
 }
 
 func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -46,12 +42,12 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.ta, taCmd = m.ta.Update(msg)
 
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.Log("Prompt disabled")
-		m.ready = false
-		m.width = msg.Width
-	case reloaded:
-		m.Log("Reloaded")
+
+	case gptea.WindowSizeMsg:
+		if !msg.Ready {
+			m.ready = false
+			break
+		}
 		if !m.ready {
 			m.ta = textarea.New()
 			m.ta.Placeholder = "..."
@@ -62,9 +58,11 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ta.ShowLineNumbers = false
 			m.ta.KeyMap.InsertNewline.SetEnabled(false)
 		}
+		m.width = msg.Width
 		m.ta.SetWidth(m.width)
 		m.ta.SetHeight(m.height)
 		m.ready = true
+
 	case promptHistory:
 		switch {
 		case msg.found:
@@ -74,22 +72,18 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.idx = msg.idx
 
-	case command.StreamCompletionResult:
+	case gptea.StreamCompletionResult:
 		m.inflight = false
 
-	case helpMsg:
-		m.help = msg.help
-
 	case tea.KeyMsg:
-		if m.help {
-			break
-		}
 		switch msg.Type {
+
 		case tea.KeyUp:
 			if m.idx == 0 {
 				m.save = m.ta.Value()
 			}
 			cmds.Add(m.getPrevious(1))
+
 		case tea.KeyDown:
 			switch m.idx {
 			case 1:
@@ -99,23 +93,18 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			default:
 				cmds.Add(m.getPrevious(-1))
 			}
-		case tea.KeyCtrlR:
-			if msg.Alt {
-				cmds.Add(func() tea.Msg { return command.StreamCompletionReq{Dummy: true} })
-				m.inflight = true
-			}
 
 		case tea.KeyEnter:
-			if m.inflight {
+			if !m.ready || m.inflight {
 				break
 			}
 			text := strings.TrimSpace(m.ta.Value())
-			if text == "" {
-				break
+			if text != "" {
+				req := gptea.MessageCmd(gptea.StreamCompletionReq{Text: text})
+				cmds.Add(req)
+				m.ta.Reset()
+				m.inflight = true
 			}
-			cmds = append(cmds, m.stream(text))
-			m.ta.Reset()
-			m.inflight = true
 		}
 	}
 	return m, cmds.BatchWith(taCmd)
@@ -159,21 +148,7 @@ func (m promptModel) getPrevious(inc int) tea.Cmd {
 	}
 }
 
-func (m promptModel) stream(msg string) tea.Cmd {
-	return func() tea.Msg {
-		return command.StreamCompletionReq{Text: msg}
-	}
-}
-
 func (m promptModel) update(msg tea.Msg) (promptModel, tea.Cmd) {
 	res, cmd := m.Update(msg)
 	return res.(promptModel), cmd
-}
-
-func (m promptModel) SetValue(val string) {
-	m.ta.SetValue(val)
-}
-
-func (m promptModel) Value() string {
-	return m.ta.Value()
 }
