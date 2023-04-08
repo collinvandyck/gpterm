@@ -136,7 +136,7 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			seq := []tea.Cmd{}
 			seq = append(seq, gptea.ClearScrollback)
 			seq = append(seq, m.printBacklog())
-			return m, tea.Sequence(seq...)
+			cmds.Add(tea.Sequence(seq...))
 		}
 
 	case gptea.StreamCompletionReq:

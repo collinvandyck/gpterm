@@ -75,6 +75,9 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gptea.StreamCompletionResult:
 		m.inflight = false
 
+	case gptea.ConversationSwitchedMsg:
+		m.idx = 0
+
 	case tea.KeyMsg:
 		switch msg.Type {
 
