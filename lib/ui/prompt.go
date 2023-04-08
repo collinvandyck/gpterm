@@ -67,10 +67,10 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case msg.found:
 			m.ta.SetValue(msg.prompt)
+			m.idx = msg.idx
 		case msg.idx == 0:
 			m.ta.SetValue(m.save)
 		}
-		m.idx = msg.idx
 
 	case gptea.StreamCompletionResult:
 		m.inflight = false
