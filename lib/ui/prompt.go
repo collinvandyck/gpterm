@@ -51,7 +51,7 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.ready {
 			m.ta = textarea.New()
 			m.ta.Placeholder = "..."
-			m.ta.Focus()
+			cmds.Add(m.ta.Focus())
 			m.ta.Prompt = "┃ "
 			m.ta.CharLimit = 4096
 			m.ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
