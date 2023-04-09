@@ -39,6 +39,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getCompletionTokensStmt, err = db.PrepareContext(ctx, getCompletionTokens); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCompletionTokens: %w", err)
 	}
+	if q.getConfigStmt, err = db.PrepareContext(ctx, getConfig); err != nil {
+		return nil, fmt.Errorf("error preparing query GetConfig: %w", err)
+	}
+	if q.getConfigValueStmt, err = db.PrepareContext(ctx, getConfigValue); err != nil {
+		return nil, fmt.Errorf("error preparing query GetConfigValue: %w", err)
+	}
 	if q.getConversationsStmt, err = db.PrepareContext(ctx, getConversations); err != nil {
 		return nil, fmt.Errorf("error preparing query GetConversations: %w", err)
 	}
@@ -71,6 +77,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.previousConversationStmt, err = db.PrepareContext(ctx, previousConversation); err != nil {
 		return nil, fmt.Errorf("error preparing query PreviousConversation: %w", err)
+	}
+	if q.setConfigValueStmt, err = db.PrepareContext(ctx, setConfigValue); err != nil {
+		return nil, fmt.Errorf("error preparing query SetConfigValue: %w", err)
 	}
 	if q.setSelectedConversationStmt, err = db.PrepareContext(ctx, setSelectedConversation); err != nil {
 		return nil, fmt.Errorf("error preparing query SetSelectedConversation: %w", err)
@@ -109,6 +118,16 @@ func (q *Queries) Close() error {
 	if q.getCompletionTokensStmt != nil {
 		if cerr := q.getCompletionTokensStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getCompletionTokensStmt: %w", cerr)
+		}
+	}
+	if q.getConfigStmt != nil {
+		if cerr := q.getConfigStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getConfigStmt: %w", cerr)
+		}
+	}
+	if q.getConfigValueStmt != nil {
+		if cerr := q.getConfigValueStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getConfigValueStmt: %w", cerr)
 		}
 	}
 	if q.getConversationsStmt != nil {
@@ -164,6 +183,11 @@ func (q *Queries) Close() error {
 	if q.previousConversationStmt != nil {
 		if cerr := q.previousConversationStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing previousConversationStmt: %w", cerr)
+		}
+	}
+	if q.setConfigValueStmt != nil {
+		if cerr := q.setConfigValueStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing setConfigValueStmt: %w", cerr)
 		}
 	}
 	if q.setSelectedConversationStmt != nil {
@@ -225,6 +249,8 @@ type Queries struct {
 	getAPIKeyStmt                    *sql.Stmt
 	getActiveConversationStmt        *sql.Stmt
 	getCompletionTokensStmt          *sql.Stmt
+	getConfigStmt                    *sql.Stmt
+	getConfigValueStmt               *sql.Stmt
 	getConversationsStmt             *sql.Stmt
 	getLatestMessagesStmt            *sql.Stmt
 	getMessagesStmt                  *sql.Stmt
@@ -236,6 +262,7 @@ type Queries struct {
 	insertUsageStmt                  *sql.Stmt
 	nextConversationStmt             *sql.Stmt
 	previousConversationStmt         *sql.Stmt
+	setConfigValueStmt               *sql.Stmt
 	setSelectedConversationStmt      *sql.Stmt
 	unsetSelectedConversationStmt    *sql.Stmt
 	updateAPIKeyStmt                 *sql.Stmt
@@ -250,6 +277,8 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAPIKeyStmt:                    q.getAPIKeyStmt,
 		getActiveConversationStmt:        q.getActiveConversationStmt,
 		getCompletionTokensStmt:          q.getCompletionTokensStmt,
+		getConfigStmt:                    q.getConfigStmt,
+		getConfigValueStmt:               q.getConfigValueStmt,
 		getConversationsStmt:             q.getConversationsStmt,
 		getLatestMessagesStmt:            q.getLatestMessagesStmt,
 		getMessagesStmt:                  q.getMessagesStmt,
@@ -261,6 +290,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		insertUsageStmt:                  q.insertUsageStmt,
 		nextConversationStmt:             q.nextConversationStmt,
 		previousConversationStmt:         q.previousConversationStmt,
+		setConfigValueStmt:               q.setConfigValueStmt,
 		setSelectedConversationStmt:      q.setSelectedConversationStmt,
 		unsetSelectedConversationStmt:    q.unsetSelectedConversationStmt,
 		updateAPIKeyStmt:                 q.updateAPIKeyStmt,

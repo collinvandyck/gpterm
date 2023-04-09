@@ -23,7 +23,6 @@ func New(store *store.Store, client client.Client, opts ...Option) UI {
 			client:        client,
 			styles:        newStaticStyles(),
 			clientTimeout: time.Minute,
-			clientHistory: 5,
 			rhsPadding:    2,
 		},
 	}
@@ -39,7 +38,6 @@ type uiOpts struct {
 	client        client.Client
 	styles        styles
 	clientTimeout time.Duration // how long to wait for a response
-	clientHistory int           // how many previous messages to send to the client
 	rhsPadding    int           // RHS padding for rendered markdown
 }
 

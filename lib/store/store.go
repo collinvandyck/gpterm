@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/collinvandyck/gpterm/db"
@@ -22,6 +23,10 @@ import (
 )
 
 const DBName = "gpterm.db"
+
+const (
+	ConfigChatMessageContext = "chat.message-context"
+)
 
 func DefaultStorePath() (string, error) {
 	hd, err := os.UserHomeDir()
@@ -84,6 +89,32 @@ func New(opts ...StoreOpt) (*Store, error) {
 }
 
 var ErrNoMoreConversations = errors.New("no more conversations")
+
+func (s *Store) GetConfig(ctx context.Context) (Config, error) {
+	return s.queries.GetConfig(ctx)
+}
+
+func (s *Store) SetConfigInt(ctx context.Context, name string, value int) error {
+	if value < 0 {
+		return errors.New("value must be greater than 0")
+	}
+	return s.queries.SetConfigValue(ctx, query.SetConfigValueParams{
+		Name:  name,
+		Value: strconv.Itoa(value),
+	})
+}
+
+func (s *Store) GetConfigInt(ctx context.Context, name string, defaultValue int) (int, error) {
+	val, err := s.queries.GetConfigValue(ctx, name)
+	switch {
+	case errs.IsDBNotFound(err):
+		return defaultValue, nil
+	case err != nil:
+		return -1, err
+	default:
+		return strconv.Atoi(val)
+	}
+}
 
 func (s *Store) NextConversation(ctx context.Context) error {
 	tx, err := s.db.Begin()

@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/collinvandyck/gpterm/lib/log"
@@ -29,8 +30,8 @@ func (rw *recordingWriter) Sync() {
 }
 
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	resp, err := rt.RoundTripper.RoundTrip(req)
 	rt.LogRequest(req)
+	resp, err := rt.RoundTripper.RoundTrip(req)
 	rt.LogResponse(resp)
 	if resp != nil {
 		recorder := &recordingWriter{log: rt.log}
@@ -51,7 +52,9 @@ func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func (rt *roundTripper) LogRequest(req *http.Request) {
-	rt.log.Log("Request", "method", req.Method, "url", req.URL)
+	bs, err := ioutil.ReadAll(req.Body)
+	req.Body = ioutil.NopCloser(bytes.NewReader(bs))
+	rt.log.Log("Request", "method", req.Method, "url", req.URL, "body", string(bs), "err", err)
 }
 
 func (rt *roundTripper) LogResponse(resp *http.Response) {

@@ -9,6 +9,11 @@ import (
 	"time"
 )
 
+type Config struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
 type Conversation struct {
 	ID        int64          `json:"id"`
 	Name      sql.NullString `json:"name"`

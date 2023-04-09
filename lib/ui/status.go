@@ -1,11 +1,13 @@
 package ui
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/collinvandyck/gpterm/lib/ui/gptea"
 )
 
@@ -15,6 +17,7 @@ type statusModel struct {
 	width   int
 	spin    bool
 	ready   bool
+	config  store.Config
 }
 
 func newStatusModel(uiOpts uiOpts) statusModel {
@@ -50,6 +53,11 @@ func (m statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gptea.StreamCompletionResult:
 		m.spin = false
 
+	case gptea.ConfigLoadedMsg:
+		if msg.Err == nil {
+			m.config = msg.Config
+		}
+
 	case spinner.TickMsg:
 		if m.spin {
 			m.spinner, _ = m.spinner.Update(msg)
@@ -80,6 +88,7 @@ func (m statusModel) spinView() string {
 
 func (m statusModel) help(width int) string {
 	style := lipgloss.NewStyle().Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color("#dddddd"))
-	text := "↑/↓: History | <C-p> Prev Convo | <C-n> Next Convo | <C-c> Quit"
+	mc := m.config.GetChatMessageContext(5)
+	text := fmt.Sprintf("↑/↓: History | Ctrl [p|n] Switch Convo | Ctrl [u|d] Convo Context (%d)", mc)
 	return style.Width(width).Render(text)
 }

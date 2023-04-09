@@ -28,10 +28,16 @@ type controlModel struct {
 	status     tea.Model
 	typewriter tea.Model
 	backlog    backlog // message backlog loaded from store
+	config     config  // persisted config
 	ready      bool    // has the terminal initialized
 	inflight   bool    // is there a completion in flight
 	width      int
 	height     int
+}
+
+type config struct {
+	store.Config
+	set bool
 }
 
 type backlog struct {
@@ -58,6 +64,7 @@ func newControlModel(uiOpts uiOpts) controlModel {
 func (m controlModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.loadBacklog,
+		m.loadConfig,
 		m.prompt.Init(),
 		m.status.Init(),
 		m.typewriter.Init(),
@@ -104,6 +111,11 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		seq = append(seq, gptea.WindowResized(msg, true))
 		return m, tea.Sequence(seq...)
 
+	case gptea.ConfigLoadedMsg:
+		m.config.Config = msg.Config
+		m.config.set = true
+		m.Log("Config loaded", "len", len(msg.Config), "err", msg.Err)
+
 	case gptea.BacklogMsg:
 		m.Log("Backlog loaded", "len", len(msg.Messages), "err", msg.Err)
 		if msg.Err != nil {
@@ -136,17 +148,19 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case gptea.StreamCompletionReq:
 		m.inflight = true
-		um := m.renderMessage(query.Message{
+		um := query.Message{
 			Role:    openai.ChatMessageRoleUser,
 			Content: msg.Text,
-		})
-		am := m.renderMessage(query.Message{
+		}
+		m.backlog.messages = append(m.backlog.messages, um)
+		am := query.Message{
 			Role: openai.ChatMessageRoleAssistant,
-		})
+		}
+		m.backlog.messages = append(m.backlog.messages, am)
 		cmds.Add(tea.Sequence(
 			tea.Println(""),
-			tea.Println(um),
-			tea.Println(am),
+			tea.Println(m.renderMessage(um)),
+			tea.Println(m.renderMessage(am)),
 			m.completeStream(msg.Text),
 		))
 
@@ -154,6 +168,13 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.inflight = false
 		if msg.Err != nil {
 			cmds.Add(m.error(msg.Err))
+			break
+		}
+		l := len(m.backlog.messages)
+		m.backlog.messages[l-1].Content = msg.Text
+		extra := len(m.backlog.messages) - defaultChatlogMaxSize
+		if extra > 0 {
+			m.backlog.messages = m.backlog.messages[extra:]
 		}
 
 	case tea.KeyMsg:
@@ -165,6 +186,16 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 
+		case tea.KeyCtrlU:
+			if m.ready && !m.inflight {
+				cmds.Add(m.changeConvoHistory(+1))
+			}
+
+		case tea.KeyCtrlD:
+			if m.ready && !m.inflight {
+				cmds.Add(m.changeConvoHistory(-1))
+			}
+
 		case tea.KeyCtrlP:
 			if m.ready && !m.inflight {
 				cmds.Add(m.previous)
@@ -174,6 +205,8 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.ready && !m.inflight {
 				cmds.Add(m.next)
 			}
+
+		default:
 		}
 	}
 
@@ -181,6 +214,23 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.status = cmds.Update(m.status, msg)
 	m.typewriter = cmds.Update(m.typewriter, msg)
 	return m, tea.Batch(cmds...)
+}
+
+func (m controlModel) changeConvoHistory(delta int) tea.Cmd {
+	return func() tea.Msg {
+		ctx := m.storeContext()
+		val, err := m.store.GetConfigInt(ctx, "chat.message-context", 5)
+		if err != nil {
+			return gptea.ConversationHistoryMsg{Err: err}
+		}
+		val += delta
+		err = m.store.SetConfigInt(ctx, "chat.message-context", val)
+		if err != nil {
+			return gptea.ConversationHistoryMsg{Val: val, Err: err}
+		}
+		config, err := m.store.GetConfig(ctx)
+		return gptea.ConfigLoadedMsg{Config: config, Err: err}
+	}
 }
 
 func (m controlModel) error(err error) tea.Cmd {
@@ -210,6 +260,12 @@ func (m controlModel) previous() tea.Msg {
 	}
 	msgs, err := m.store.GetLastMessages(ctx, defaultChatlogMaxSize)
 	return gptea.ConversationSwitchedMsg{Messages: msgs, Err: err}
+}
+
+func (m controlModel) loadConfig() tea.Msg {
+	ctx := m.storeContext()
+	cfg, err := m.store.GetConfig(ctx)
+	return gptea.ConfigLoadedMsg{Config: cfg, Err: err}
 }
 
 func (m controlModel) loadBacklog() tea.Msg {
@@ -277,10 +333,13 @@ func (m controlModel) completeStream(msg string) tea.Cmd {
 			buf := new(bytes.Buffer) // we'll use this for saving the response
 			var usage openai.Usage
 			err := func() error {
-				latest, err := m.store.GetLastMessages(ctx, m.clientHistory)
+				clientHistory := m.config.GetChatMessageContext(5)
+				m.Log("Using client history", "val", clientHistory)
+				latest, err := m.store.GetLastMessages(ctx, clientHistory)
 				if err != nil {
 					return fmt.Errorf("load context: %w", err)
 				}
+				m.Log("Using client history context", "len", len(latest))
 				streamResult, err := m.client.Stream(ctx, latest, msg)
 				if err != nil {
 					return fmt.Errorf("failed to complete: %w", err)

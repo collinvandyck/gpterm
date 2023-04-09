@@ -66,7 +66,7 @@ var root = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("new client: %w", err)
 		}
-		ui := ui.New(store, client, ui.WithLogger(logger), ui.WithClientHistory(clientHistory))
+		ui := ui.New(store, client, ui.WithLogger(logger))
 		return ui.Run(ctx)
 	},
 }
