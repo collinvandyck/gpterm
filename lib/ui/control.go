@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -177,23 +179,34 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.backlog.messages = m.backlog.messages[extra:]
 		}
 
+	case gptea.EditorRequestMsg:
+		if m.ready && !m.inflight {
+			cmds.Add(m.spawnEditor(msg.Prompt))
+		}
+
+	case gptea.EditorResultMsg:
+		if msg.Err != nil {
+			cmds.Add(m.error(msg.Err))
+			break
+		}
+
+	case gptea.ErrorMsg:
+		cmds.Add(m.error(msg.Err))
+
 	case tea.KeyMsg:
 		switch msg.Type {
-
-		case tea.KeyCtrlY:
-			m.Log("Entering paste mode")
 
 		case tea.KeyCtrlC:
 			return m, tea.Quit
 
-		case tea.KeyCtrlU:
-			if m.ready && !m.inflight {
-				cmds.Add(m.changeConvoHistory(+1))
-			}
-
-		case tea.KeyCtrlD:
+		case tea.KeyF1:
 			if m.ready && !m.inflight {
 				cmds.Add(m.changeConvoHistory(-1))
+			}
+
+		case tea.KeyF2:
+			if m.ready && !m.inflight {
+				cmds.Add(m.changeConvoHistory(+1))
 			}
 
 		case tea.KeyCtrlP:
@@ -207,6 +220,7 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		default:
+
 		}
 	}
 
@@ -214,6 +228,85 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.status = cmds.Update(m.status, msg)
 	m.typewriter = cmds.Update(m.typewriter, msg)
 	return m, tea.Batch(cmds...)
+}
+
+const editorTemplate = `
+# The contents of this file will be written to gpterm 
+# as if you had typed it into the prompt.
+#
+# The first lines of the file beginning with '#' will 
+# be ignored when sending the result to gpterm.
+#
+# Content will be rendered as markdown in the gpterm 
+# backlog. Paragraphs should be separated by a blank line.
+
+
+`
+
+func editorIsVim(editor string) bool {
+	editor = strings.TrimSpace(editor)
+	editor = strings.ToLower(editor)
+	switch editor {
+	case "vim", "vi", "nvim":
+		return true
+	default:
+		return false
+	}
+}
+
+func (m controlModel) spawnEditor(prompt string) tea.Cmd {
+	const editorEnv = "EDITOR"
+	editor := os.Getenv(editorEnv)
+	if editor == "" {
+		return gptea.ErrorCmd(fmt.Errorf("Environment variable %q must be set", editorEnv))
+	}
+	f, err := os.CreateTemp("", "gptea")
+	if err != nil {
+		return gptea.ErrorCmd(err)
+	}
+	template := strings.TrimLeft(editorTemplate, " \n")
+	io.Copy(f, strings.NewReader(template))
+	io.Copy(f, strings.NewReader(prompt))
+
+	args := []string{}
+	if editorIsVim(editor) {
+		args = append(args, "+$", "-c", "startinsert")
+	}
+	args = append(args, f.Name())
+	cmd := exec.Command(editor, args...)
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
+		if err != nil {
+			return gptea.ErrorMsg{Err: err}
+		}
+		err = f.Close()
+		if err != nil {
+			return gptea.ErrorMsg{Err: err}
+		}
+		bs, err := os.ReadFile(f.Name())
+		if err != nil {
+			return gptea.ErrorMsg{Err: err}
+		}
+		err = os.Remove(f.Name())
+		if err != nil {
+			return gptea.ErrorMsg{Err: err}
+		}
+		text := string(bs)
+		text = strings.TrimSpace(text)
+		buf := new(bytes.Buffer)
+		inHeader := true
+		s := bufio.NewScanner(strings.NewReader(text))
+		for s.Scan() {
+			line := s.Text()
+			if inHeader && strings.HasPrefix(line, "#") {
+				continue
+			}
+			inHeader = false
+			buf.WriteString(line + "\n")
+		}
+		text = buf.String()
+		text = strings.TrimSpace(text)
+		return gptea.EditorResultMsg{Text: text}
+	})
 }
 
 func (m controlModel) changeConvoHistory(delta int) tea.Cmd {
@@ -224,6 +317,9 @@ func (m controlModel) changeConvoHistory(delta int) tea.Cmd {
 			return gptea.ConversationHistoryMsg{Err: err}
 		}
 		val += delta
+		if val < 1 || val > 20 {
+			return gptea.ConversationHistoryMsg{Err: fmt.Errorf("invalid value: %d", val)}
+		}
 		err = m.store.SetConfigInt(ctx, "chat.message-context", val)
 		if err != nil {
 			return gptea.ConversationHistoryMsg{Val: val, Err: err}

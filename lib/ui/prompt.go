@@ -14,13 +14,15 @@ import (
 
 type promptModel struct {
 	uiOpts
-	ta       textarea.Model
-	ready    bool
-	height   int
-	idx      int    // 0 means current, positive is index in history
-	save     string // the current prompt, saved
-	inflight bool   // if a client command is in flight
-	width    int
+	ta           textarea.Model
+	initialized  bool
+	ready        bool
+	height       int
+	idx          int    // 0 means current, positive is index in history
+	save         string // the current prompt, saved
+	inflight     bool   // if a client command is in flight
+	width        int
+	editorPrompt string // saves the editor value
 }
 
 type promptHistory struct {
@@ -44,11 +46,13 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case gptea.WindowSizeMsg:
+		m.Log("WindowSizeMsg")
 		if !msg.Ready {
 			m.ready = false
 			break
 		}
-		if !m.ready {
+		if !m.initialized {
+			m.Log("Building prompt")
 			m.ta = textarea.New()
 			m.ta.Placeholder = "..."
 			cmds.Add(m.ta.Focus())
@@ -57,6 +61,7 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
 			m.ta.ShowLineNumbers = false
 			m.ta.KeyMap.InsertNewline.SetEnabled(false)
+			m.initialized = true
 		}
 		m.width = msg.Width
 		m.ta.SetWidth(m.width)
@@ -78,8 +83,26 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gptea.ConversationSwitchedMsg:
 		m.idx = 0
 
+	case gptea.EditorResultMsg:
+		text := strings.TrimSpace(msg.Text)
+		taval := strings.TrimSpace(m.ta.Value())
+		if text == taval {
+			break
+		}
+		if text != "" {
+			req := gptea.MessageCmd(gptea.StreamCompletionReq{Text: text})
+			cmds.Add(req)
+			m.ta.Reset()
+			m.inflight = true
+		}
+
 	case tea.KeyMsg:
 		switch msg.Type {
+
+		case tea.KeyCtrlY:
+			if m.ready && !m.inflight {
+				cmds.Add(gptea.StartEditorCmd(m.ta.Value()))
+			}
 
 		case tea.KeyUp:
 			if m.idx == 0 {

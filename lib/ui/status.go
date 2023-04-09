@@ -89,6 +89,6 @@ func (m statusModel) spinView() string {
 func (m statusModel) help(width int) string {
 	style := lipgloss.NewStyle().Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color("#dddddd"))
 	mc := m.config.GetChatMessageContext(5)
-	text := fmt.Sprintf("↑/↓: History | Ctrl [p|n] Switch Convo | Ctrl [u|d] Convo Context (%d)", mc)
+	text := fmt.Sprintf("↑/↓: History | Ctrl+y Editor | Ctrl+[p/n] Convo | F1/F2 Context (%d)", mc)
 	return style.Width(width).Render(text)
 }
