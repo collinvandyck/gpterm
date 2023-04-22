@@ -7,17 +7,23 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	markdown "github.com/collinvandyck/go-term-markdown"
 	"github.com/collinvandyck/gpterm/db/query"
 	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/collinvandyck/gpterm/lib/ui/gptea"
+	"github.com/google/go-github/v39/github"
+	"github.com/gregjones/httpcache"
 	"github.com/sashabaranov/go-openai"
+	"golang.org/x/oauth2"
 )
 
 const (
@@ -29,12 +35,19 @@ type controlModel struct {
 	prompt     tea.Model
 	status     tea.Model
 	typewriter tea.Model
+	textInput  textInput
 	backlog    backlog // message backlog loaded from store
 	config     config  // persisted config
 	ready      bool    // has the terminal initialized
 	inflight   bool    // is there a completion in flight
 	width      int
 	height     int
+}
+
+type textInput struct {
+	textinput.Model
+	active         bool
+	credentialName string
 }
 
 type config struct {
@@ -80,6 +93,10 @@ func (m controlModel) View() string {
 	var res string
 	res += m.typewriter.View()
 	res += "\n"
+	if m.textInput.active {
+		res += m.textInput.View()
+		res += "\n"
+	}
 	res += m.prompt.View()
 	res += "\n"
 	res += m.status.View()
@@ -193,6 +210,34 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gptea.ErrorMsg:
 		cmds.Add(m.error(msg.Err))
 
+	case gptea.SetCredentialReq:
+		m.textInput.active = true
+		m.textInput.credentialName = store.CredentialGithubToken
+		m.textInput.Model = textinput.New()
+		m.textInput.Model.Prompt = msg.Prompt
+		m.textInput.Model.EchoMode = textinput.EchoPassword
+		m.textInput.Model.Focus()
+
+	case gptea.GistResultMsg:
+		seq := []tea.Cmd{}
+		if msg.Err != nil {
+			seq = append(seq, m.error(msg.Err))
+		}
+		if msg.NoCredentials {
+			seq = append(seq, m.error(errors.New("no GitHub credentials configured")))
+			seq = append(seq, gptea.MessageCmd(gptea.SetCredentialReq{
+				Prompt: "Enter your GitHub token: ",
+				Key:    store.CredentialGithubToken,
+			}))
+		}
+		if msg.URL != "" {
+			seq = append(seq, tea.Println())
+			role := m.styles.Role(openai.ChatMessageRoleAssistant)
+			seq = append(seq, tea.Println(role))
+			seq = append(seq, tea.Println("Here's a link to the conversation history: "+msg.URL))
+		}
+		cmds.Add(tea.Sequence(seq...))
+
 	case tea.KeyMsg:
 		switch msg.Type {
 
@@ -208,6 +253,10 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.ready && !m.inflight {
 				cmds.Add(m.changeConvoHistory(+1))
 			}
+
+		case tea.KeyF12:
+			// gist support isn't ready yet
+			// cmds.Add(m.gist)
 
 		case tea.KeyCtrlP:
 			if m.ready && !m.inflight {
@@ -227,7 +276,73 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.prompt = cmds.Update(m.prompt, msg)
 	m.status = cmds.Update(m.status, msg)
 	m.typewriter = cmds.Update(m.typewriter, msg)
+
+	var textInputCmd tea.Cmd
+	m.textInput.Model, textInputCmd = m.textInput.Model.Update(msg)
+	cmds.Add(textInputCmd)
+
 	return m, tea.Batch(cmds...)
+}
+
+func (m controlModel) gist() tea.Msg {
+	ctx := context.Background()
+	accessToken, err := m.store.GetCredential(ctx, store.CredentialGithubToken)
+	if err != nil {
+		return gptea.GistResultMsg{Err: err}
+	}
+	if accessToken == "" {
+		return gptea.GistResultMsg{NoCredentials: true}
+	}
+	tokenSrc := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: accessToken})
+	client := &http.Client{
+		Transport: &oauth2.Transport{
+			Base:   httpcache.NewMemoryCacheTransport(),
+			Source: tokenSrc,
+		},
+	}
+	c := github.NewClient(client)
+	gist, resp, err := c.Gists.Create(ctx, &github.Gist{
+		Description: github.String("gpterm backlog"),
+		Public:      github.Bool(false),
+		Files: map[github.GistFilename]github.GistFile{
+			"gpterm-backlog.md": {
+				Filename: github.String("gpterm-backlog.md"),
+				Content:  github.String(m.renderBacklogGist()),
+			},
+		},
+	})
+	if err != nil {
+		return gptea.GistResultMsg{Err: err}
+	}
+	if resp != nil && resp.StatusCode >= 400 {
+		return gptea.GistResultMsg{Err: fmt.Errorf("gist request failed with status code %d", resp.StatusCode)}
+	}
+	if gist == nil || gist.HTMLURL == nil {
+		return gptea.GistResultMsg{Err: fmt.Errorf("gist request failed with no error and no gist")}
+	}
+
+	res := gptea.GistResultMsg{URL: *gist.HTMLURL}
+	m.Log("Got gist", "url", res.URL)
+	var ec *exec.Cmd
+	switch os := runtime.GOOS; os {
+	case "darwin":
+		m.Log("Invoking open")
+		ec = exec.Command("/usr/bin/open", *gist.HTMLURL)
+	case "linux":
+		m.Log("Invoking xdg-open")
+		ec = exec.Command("xdg-open", *gist.HTMLURL)
+	default:
+		m.Log("Unknown OS")
+	}
+	if ec != nil {
+		eco, err := ec.CombinedOutput()
+		m.Log("Open result", "err", err, "output", string(eco))
+		if err != nil {
+			res.Err = fmt.Errorf("failed to open gist in browser: %w\n%s", err, eco)
+		}
+		res.Opened = err == nil
+	}
+	return res
 }
 
 const editorTemplate = `
@@ -385,6 +500,20 @@ func (m controlModel) printBacklog() tea.Cmd {
 		tea.Println(re),
 		gptea.MessageCmd(gptea.BacklogPrintedMsg{}),
 	)
+}
+
+func (m controlModel) renderBacklogGist() string {
+	buf := bytes.Buffer{}
+	for _, msg := range m.backlog.messages {
+		role := m.styles.Name(msg.Role)
+		content := msg.Content
+		buf.WriteString(fmt.Sprintf("### %s\n\n", role))
+		buf.WriteString(content)
+		buf.WriteString("\n\n")
+	}
+	re := buf.String()
+	re = strings.TrimSpace(re)
+	return re
 }
 
 func (m controlModel) renderBacklog() string {

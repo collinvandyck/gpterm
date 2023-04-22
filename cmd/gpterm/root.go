@@ -48,11 +48,11 @@ var root = &cobra.Command{
 		defer rw.Close()
 		requestLogger := log.NewWriter(rw)
 
-		store, err := store.New(store.StoreLog(logger.New("name", "store")))
+		str, err := store.New(store.StoreLog(logger.New("name", "store")))
 		if err != nil {
 			return fmt.Errorf("new store: %w", err)
 		}
-		key, err := store.GetAPIKey(ctx)
+		key, err := str.GetCredential(ctx, store.CredentialAPIKey)
 		if err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ var root = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("new client: %w", err)
 		}
-		ui := ui.New(store, client, ui.WithLogger(logger))
+		ui := ui.New(str, client, ui.WithLogger(logger))
 		return ui.Run(ctx)
 	},
 }

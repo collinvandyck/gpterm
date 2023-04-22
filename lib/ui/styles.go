@@ -4,6 +4,7 @@ import "github.com/charmbracelet/lipgloss"
 
 type styles interface {
 	Role(sender string) string
+	Name(sender string) string
 }
 
 type staticStyles struct {
@@ -32,6 +33,14 @@ func newStaticStyles() staticStyles {
 		},
 		defaultStyle: senderStyle(lipgloss.Color("3")),
 	}
+}
+
+func (ss staticStyles) Name(role string) string {
+	name, ok := ss.names[role]
+	if !ok {
+		name = role
+	}
+	return name
 }
 
 func (ss staticStyles) Role(role string) string {

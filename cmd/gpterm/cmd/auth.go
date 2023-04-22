@@ -24,11 +24,11 @@ func Auth() *cobra.Command {
 			if key == "" {
 				return errors.New("no key supplied")
 			}
-			store, err := store.New()
+			str, err := store.New()
 			if err != nil {
 				return fmt.Errorf("store: %w", err)
 			}
-			err = store.SetAPIKey(ctx, key)
+			err = str.SetCredential(ctx, store.CredentialAPIKey, key)
 			if err != nil {
 				return fmt.Errorf("set api key: %w", err)
 			}

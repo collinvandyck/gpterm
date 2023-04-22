@@ -30,9 +30,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.createConversationStmt, err = db.PrepareContext(ctx, createConversation); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateConversation: %w", err)
 	}
-	if q.getAPIKeyStmt, err = db.PrepareContext(ctx, getAPIKey); err != nil {
-		return nil, fmt.Errorf("error preparing query GetAPIKey: %w", err)
-	}
 	if q.getActiveConversationStmt, err = db.PrepareContext(ctx, getActiveConversation); err != nil {
 		return nil, fmt.Errorf("error preparing query GetActiveConversation: %w", err)
 	}
@@ -48,6 +45,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getConversationsStmt, err = db.PrepareContext(ctx, getConversations); err != nil {
 		return nil, fmt.Errorf("error preparing query GetConversations: %w", err)
 	}
+	if q.getCredentialStmt, err = db.PrepareContext(ctx, getCredential); err != nil {
+		return nil, fmt.Errorf("error preparing query GetCredential: %w", err)
+	}
 	if q.getLatestMessagesStmt, err = db.PrepareContext(ctx, getLatestMessages); err != nil {
 		return nil, fmt.Errorf("error preparing query GetLatestMessages: %w", err)
 	}
@@ -62,9 +62,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getTotalTokensStmt, err = db.PrepareContext(ctx, getTotalTokens); err != nil {
 		return nil, fmt.Errorf("error preparing query GetTotalTokens: %w", err)
-	}
-	if q.insertAPIKeyStmt, err = db.PrepareContext(ctx, insertAPIKey); err != nil {
-		return nil, fmt.Errorf("error preparing query InsertAPIKey: %w", err)
 	}
 	if q.insertMessageStmt, err = db.PrepareContext(ctx, insertMessage); err != nil {
 		return nil, fmt.Errorf("error preparing query InsertMessage: %w", err)
@@ -87,8 +84,8 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.unsetSelectedConversationStmt, err = db.PrepareContext(ctx, unsetSelectedConversation); err != nil {
 		return nil, fmt.Errorf("error preparing query UnsetSelectedConversation: %w", err)
 	}
-	if q.updateAPIKeyStmt, err = db.PrepareContext(ctx, updateAPIKey); err != nil {
-		return nil, fmt.Errorf("error preparing query UpdateAPIKey: %w", err)
+	if q.updateCredentialStmt, err = db.PrepareContext(ctx, updateCredential); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateCredential: %w", err)
 	}
 	return &q, nil
 }
@@ -103,11 +100,6 @@ func (q *Queries) Close() error {
 	if q.createConversationStmt != nil {
 		if cerr := q.createConversationStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createConversationStmt: %w", cerr)
-		}
-	}
-	if q.getAPIKeyStmt != nil {
-		if cerr := q.getAPIKeyStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getAPIKeyStmt: %w", cerr)
 		}
 	}
 	if q.getActiveConversationStmt != nil {
@@ -135,6 +127,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getConversationsStmt: %w", cerr)
 		}
 	}
+	if q.getCredentialStmt != nil {
+		if cerr := q.getCredentialStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getCredentialStmt: %w", cerr)
+		}
+	}
 	if q.getLatestMessagesStmt != nil {
 		if cerr := q.getLatestMessagesStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getLatestMessagesStmt: %w", cerr)
@@ -158,11 +155,6 @@ func (q *Queries) Close() error {
 	if q.getTotalTokensStmt != nil {
 		if cerr := q.getTotalTokensStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getTotalTokensStmt: %w", cerr)
-		}
-	}
-	if q.insertAPIKeyStmt != nil {
-		if cerr := q.insertAPIKeyStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing insertAPIKeyStmt: %w", cerr)
 		}
 	}
 	if q.insertMessageStmt != nil {
@@ -200,9 +192,9 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing unsetSelectedConversationStmt: %w", cerr)
 		}
 	}
-	if q.updateAPIKeyStmt != nil {
-		if cerr := q.updateAPIKeyStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing updateAPIKeyStmt: %w", cerr)
+	if q.updateCredentialStmt != nil {
+		if cerr := q.updateCredentialStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateCredentialStmt: %w", cerr)
 		}
 	}
 	return err
@@ -246,18 +238,17 @@ type Queries struct {
 	tx                               *sql.Tx
 	countMessagesForConversationStmt *sql.Stmt
 	createConversationStmt           *sql.Stmt
-	getAPIKeyStmt                    *sql.Stmt
 	getActiveConversationStmt        *sql.Stmt
 	getCompletionTokensStmt          *sql.Stmt
 	getConfigStmt                    *sql.Stmt
 	getConfigValueStmt               *sql.Stmt
 	getConversationsStmt             *sql.Stmt
+	getCredentialStmt                *sql.Stmt
 	getLatestMessagesStmt            *sql.Stmt
 	getMessagesStmt                  *sql.Stmt
 	getPreviousMessageForRoleStmt    *sql.Stmt
 	getPromptTokensStmt              *sql.Stmt
 	getTotalTokensStmt               *sql.Stmt
-	insertAPIKeyStmt                 *sql.Stmt
 	insertMessageStmt                *sql.Stmt
 	insertUsageStmt                  *sql.Stmt
 	nextConversationStmt             *sql.Stmt
@@ -265,7 +256,7 @@ type Queries struct {
 	setConfigValueStmt               *sql.Stmt
 	setSelectedConversationStmt      *sql.Stmt
 	unsetSelectedConversationStmt    *sql.Stmt
-	updateAPIKeyStmt                 *sql.Stmt
+	updateCredentialStmt             *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
@@ -274,18 +265,17 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		tx:                               tx,
 		countMessagesForConversationStmt: q.countMessagesForConversationStmt,
 		createConversationStmt:           q.createConversationStmt,
-		getAPIKeyStmt:                    q.getAPIKeyStmt,
 		getActiveConversationStmt:        q.getActiveConversationStmt,
 		getCompletionTokensStmt:          q.getCompletionTokensStmt,
 		getConfigStmt:                    q.getConfigStmt,
 		getConfigValueStmt:               q.getConfigValueStmt,
 		getConversationsStmt:             q.getConversationsStmt,
+		getCredentialStmt:                q.getCredentialStmt,
 		getLatestMessagesStmt:            q.getLatestMessagesStmt,
 		getMessagesStmt:                  q.getMessagesStmt,
 		getPreviousMessageForRoleStmt:    q.getPreviousMessageForRoleStmt,
 		getPromptTokensStmt:              q.getPromptTokensStmt,
 		getTotalTokensStmt:               q.getTotalTokensStmt,
-		insertAPIKeyStmt:                 q.insertAPIKeyStmt,
 		insertMessageStmt:                q.insertMessageStmt,
 		insertUsageStmt:                  q.insertUsageStmt,
 		nextConversationStmt:             q.nextConversationStmt,
@@ -293,6 +283,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		setConfigValueStmt:               q.setConfigValueStmt,
 		setSelectedConversationStmt:      q.setSelectedConversationStmt,
 		unsetSelectedConversationStmt:    q.unsetSelectedConversationStmt,
-		updateAPIKeyStmt:                 q.updateAPIKeyStmt,
+		updateCredentialStmt:             q.updateCredentialStmt,
 	}
 }

@@ -9,32 +9,28 @@ import (
 	"context"
 )
 
-const getAPIKey = `-- name: GetAPIKey :one
+const getCredential = `-- name: GetCredential :one
 SELECT value FROM credential
-WHERE name='api_key' LIMIT 1
+WHERE name=? LIMIT 1
 `
 
-func (q *Queries) GetAPIKey(ctx context.Context) (string, error) {
-	row := q.queryRow(ctx, q.getAPIKeyStmt, getAPIKey)
+func (q *Queries) GetCredential(ctx context.Context, name string) (string, error) {
+	row := q.queryRow(ctx, q.getCredentialStmt, getCredential, name)
 	var value string
 	err := row.Scan(&value)
 	return value, err
 }
 
-const insertAPIKey = `-- name: InsertAPIKey :exec
-INSERT INTO credential (name, value) values ('api_key', ?)
+const updateCredential = `-- name: UpdateCredential :exec
+INSERT OR REPLACE INTO credential (name, value) VALUES (?, ?)
 `
 
-func (q *Queries) InsertAPIKey(ctx context.Context, value string) error {
-	_, err := q.exec(ctx, q.insertAPIKeyStmt, insertAPIKey, value)
-	return err
+type UpdateCredentialParams struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
-const updateAPIKey = `-- name: UpdateAPIKey :exec
-UPDATE credential set value=? where name='api_key'
-`
-
-func (q *Queries) UpdateAPIKey(ctx context.Context, value string) error {
-	_, err := q.exec(ctx, q.updateAPIKeyStmt, updateAPIKey, value)
+func (q *Queries) UpdateCredential(ctx context.Context, arg UpdateCredentialParams) error {
+	_, err := q.exec(ctx, q.updateCredentialStmt, updateCredential, arg.Name, arg.Value)
 	return err
 }

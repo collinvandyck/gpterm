@@ -77,6 +77,12 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ta.SetValue(m.save)
 		}
 
+	case gptea.SetCredentialReq:
+		m.ta.Blur()
+
+	case gptea.SetCredentialRes:
+		m.ta.Focus()
+
 	case gptea.StreamCompletionResult:
 		m.inflight = false
 
@@ -97,6 +103,9 @@ func (m promptModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.KeyMsg:
+		if !m.ta.Focused() {
+			break
+		}
 		switch msg.Type {
 
 		case tea.KeyCtrlY:

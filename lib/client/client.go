@@ -48,13 +48,17 @@ type CompleteResult struct {
 	Response openai.ChatCompletionResponse
 }
 
-func (c *client) Stream(ctx context.Context, latest []query.Message, content string) (*StreamResult, error) {
-	messages := []openai.ChatCompletionMessage{
+func (c *client) preamble() []openai.ChatCompletionMessage {
+	return []openai.ChatCompletionMessage{
 		{
 			Role:    openai.ChatMessageRoleAssistant,
-			Content: "You are a helpful assistant",
+			Content: "You are a helpful assistant. If you write code make sure it is in a code block with language annotations.",
 		},
 	}
+}
+
+func (c *client) Stream(ctx context.Context, latest []query.Message, content string) (*StreamResult, error) {
+	messages := c.preamble()
 	for _, msg := range latest {
 		messages = append(messages, openai.ChatCompletionMessage{
 			Role:    msg.Role,
@@ -82,12 +86,7 @@ func (c *client) Stream(ctx context.Context, latest []query.Message, content str
 }
 
 func (c *client) Complete(ctx context.Context, latest []query.Message, content string) (*CompleteResult, error) {
-	messages := []openai.ChatCompletionMessage{
-		{
-			Role:    openai.ChatMessageRoleAssistant,
-			Content: "You are a helpful assistant",
-		},
-	}
+	messages := c.preamble()
 	for _, msg := range latest {
 		messages = append(messages, openai.ChatCompletionMessage{
 			Role:    msg.Role,

@@ -22,10 +22,11 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
-const DBName = "gpterm.db"
-
 const (
+	DBName                   = "gpterm.db"
 	ConfigChatMessageContext = "chat.message-context"
+	CredentialAPIKey         = "api_key"
+	CredentialGithubToken    = "github_token"
 )
 
 func DefaultStorePath() (string, error) {
@@ -171,6 +172,7 @@ func (s *Store) PreviousConversation(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	defer tx.Rollback()
 	queryTX := s.queries.WithTx(tx)
 
@@ -293,26 +295,21 @@ func (s *Store) SaveRequestResponse(ctx context.Context, req openai.ChatCompleti
 	return nil
 }
 
-func (s *Store) SetAPIKey(ctx context.Context, key string) error {
-	err := s.queries.InsertAPIKey(ctx, key)
-	switch {
-	case err == nil:
-		return nil
-	case errs.IsUniqueConstaint(err):
-	case err != nil:
-		return err
-	}
-	return s.queries.UpdateAPIKey(ctx, key)
-}
-
-func (s *Store) GetAPIKey(ctx context.Context) (string, error) {
-	res, err := s.queries.GetAPIKey(ctx)
+func (s *Store) GetCredential(ctx context.Context, name string) (string, error) {
+	res, err := s.queries.GetCredential(ctx, name)
 	switch {
 	case errs.IsDBNotFound(err):
 	case err != nil:
 		return "", err
 	}
 	return res, nil
+}
+
+func (s *Store) SetCredential(ctx context.Context, name string, value string) error {
+	return s.queries.UpdateCredential(ctx, query.UpdateCredentialParams{
+		Name:  name,
+		Value: value,
+	})
 }
 
 func (s *Store) Close() error {
