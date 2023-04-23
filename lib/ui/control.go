@@ -385,7 +385,7 @@ func (m controlModel) spawnEditor(prompt string) tea.Cmd {
 
 	args := []string{}
 	if editorIsVim(editor) {
-		args = append(args, "+$", "-c", "startinsert")
+		args = append(args, "+$", "-c", "startinsert", "-c", "set ft=markdown syntax=markdown")
 	}
 	args = append(args, f.Name())
 	cmd := exec.Command(editor, args...)
