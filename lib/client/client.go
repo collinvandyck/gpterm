@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"net/http"
 	"strings"
@@ -48,13 +49,25 @@ type CompleteResult struct {
 	Response openai.ChatCompletionResponse
 }
 
+//go:embed preambles/*
+var preambles embed.FS
+
+func getPreamble(name string) string {
+	bs, err := preambles.ReadFile(fmt.Sprintf("preambles/%s.md", name))
+	if err != nil {
+		panic(err)
+	}
+	return strings.TrimSpace(string(bs))
+}
+
 func (c *client) preamble() []openai.ChatCompletionMessage {
 	return []openai.ChatCompletionMessage{
 		{
 			Role:    openai.ChatMessageRoleAssistant,
-			Content: "You are a helpful assistant. If you write code make sure it is in a code block with language annotations.",
+			Content: getPreamble("default"),
 		},
 	}
+
 }
 
 func (c *client) Stream(ctx context.Context, latest []query.Message, content string) (*StreamResult, error) {
