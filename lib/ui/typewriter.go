@@ -6,7 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	markdown "github.com/collinvandyck/go-term-markdown"
+	"github.com/collinvandyck/gpterm/lib/markdown"
 	"github.com/collinvandyck/gpterm/lib/ui/gptea"
 )
 
@@ -96,7 +96,8 @@ func (m *typewriterModel) render() {
 	if width > m.rhsPadding {
 		width -= m.rhsPadding
 	}
-	re := string(markdown.Render(data, width, 0))
+	bs, _ := markdown.RenderString(data, width)
+	re := string(bs)
 	re = strings.TrimSpace(re)
 	m.rendered = strings.Split(re, "\n")
 	if len(m.rendered) > m.maxRendered {

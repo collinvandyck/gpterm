@@ -16,8 +16,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	markdown "github.com/collinvandyck/go-term-markdown"
 	"github.com/collinvandyck/gpterm/db/query"
+	"github.com/collinvandyck/gpterm/lib/markdown"
 	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/collinvandyck/gpterm/lib/ui/gptea"
 	"github.com/google/go-github/v39/github"
@@ -538,7 +538,15 @@ func (m controlModel) renderMessage(msg query.Message) string {
 	}
 	role := msg.Role
 	role = m.styles.Role(role)
-	bs := markdown.Render(msg.Content, width, 0)
+
+	if msg.Content == "" {
+		return role
+	}
+	bs, err := markdown.RenderString(msg.Content, width)
+	if err != nil {
+		panic(err)
+	}
+	bs = bytes.TrimSpace(bs)
 	sc := bufio.NewScanner(bytes.NewReader(bs))
 	rendered := new(bytes.Buffer)
 	for sc.Scan() {
