@@ -1,8 +1,9 @@
 module github.com/collinvandyck/gpterm
 
-go 1.20
+go 1.18
 
 require (
+	github.com/alecthomas/chroma v0.10.0
 	github.com/charmbracelet/bubbles v0.15.0
 	github.com/charmbracelet/bubbletea v0.23.2
 	github.com/charmbracelet/glow v1.5.0
@@ -12,6 +13,7 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/kyleconroy/sqlc v1.17.2
 	github.com/mattn/go-sqlite3 v1.14.16
+	github.com/muesli/reflow v0.3.0
 	github.com/sashabaranov/go-openai v1.5.8-0.20230401160622-b542086cbb22
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.2
@@ -36,7 +38,6 @@ require (
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/ClickHouse/clickhouse-go v1.4.3 // indirect
-	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220626175859-9abda183db8e // indirect
 	github.com/apache/arrow/go/arrow v0.0.0-20211013220434-5962184e7a30 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
@@ -125,7 +126,6 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/gitcha v0.2.0 // indirect
 	github.com/muesli/go-app-paths v0.2.2 // indirect
-	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/sasquatch v0.0.0-20200811221207-66979d92330a // indirect
 	github.com/muesli/termenv v0.15.1 // indirect
 	github.com/mutecomm/go-sqlcipher/v4 v4.4.0 // indirect

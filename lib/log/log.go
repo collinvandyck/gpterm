@@ -110,7 +110,7 @@ func (l *logger) renderPair(buf *bytes.Buffer, key string, val any) {
 	case []byte:
 		buf.WriteString(maybeQuote(string(v)))
 	case time.Time:
-		ft := v.Format(time.TimeOnly)
+		ft := v.Format("15:04:05")
 		buf.WriteString(maybeQuote(ft))
 	default:
 		fmt.Fprint(buf, v)
