@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+type ClientConfig struct {
+	Name           string `json:"name"`
+	Model          string `json:"model"`
+	MessageContext int64  `json:"message_context"`
+}
+
 type Config struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`

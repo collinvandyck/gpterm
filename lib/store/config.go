@@ -17,11 +17,3 @@ func (c Config) Int(key string) (int, error) {
 	}
 	return 0, errors.New("config not found")
 }
-
-func (c Config) GetChatMessageContext(defaultValue int) int {
-	val, err := c.Int("chat.message-context")
-	if err != nil {
-		return defaultValue
-	}
-	return val
-}

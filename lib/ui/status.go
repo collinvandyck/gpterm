@@ -7,17 +7,19 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/collinvandyck/gpterm/db/query"
 	"github.com/collinvandyck/gpterm/lib/store"
 	"github.com/collinvandyck/gpterm/lib/ui/gptea"
 )
 
 type statusModel struct {
 	uiOpts
-	spinner spinner.Model
-	width   int
-	spin    bool
-	ready   bool
-	config  store.Config
+	spinner      spinner.Model
+	width        int
+	spin         bool
+	ready        bool
+	config       store.Config
+	clientConfig query.ClientConfig
 }
 
 func newStatusModel(uiOpts uiOpts) statusModel {
@@ -56,6 +58,7 @@ func (m statusModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gptea.ConfigLoadedMsg:
 		if msg.Err == nil {
 			m.config = msg.Config
+			m.clientConfig = msg.ClientConfig
 		}
 
 	case spinner.TickMsg:
@@ -88,7 +91,8 @@ func (m statusModel) spinView() string {
 
 func (m statusModel) help(width int) string {
 	style := lipgloss.NewStyle().Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color("#dddddd"))
-	mc := m.config.GetChatMessageContext(5)
-	text := fmt.Sprintf("↑/↓: History | Ctrl+y Editor | Ctrl+[p/n] Convo | F1/F2 Context (%d)", mc)
+	mc := m.clientConfig.MessageContext
+	model := m.clientConfig.Model
+	text := fmt.Sprintf("↑/↓: History | Ctrl+y Editor | Ctrl+[p/n] Convo | F1/F2 Context (%d) | F3 Model (%s)", mc, model)
 	return style.Width(width).Render(text)
 }

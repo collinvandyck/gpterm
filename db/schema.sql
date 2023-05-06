@@ -28,3 +28,8 @@ CREATE TABLE config (
 	name varchar primary key,
 	value text NOT NULL
 );
+CREATE TABLE client_config (
+	name text primary key,
+	model text not null,
+	message_context int not null
+);

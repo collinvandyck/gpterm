@@ -14,11 +14,13 @@ import (
 type Client interface {
 	Complete(ctx context.Context, latest []query.Message, content string) (*CompleteResult, error)
 	Stream(ctx context.Context, latest []query.Message, content string) (*StreamResult, error)
+	Update(opts ...Option)
 }
 
 type client struct {
-	openai openai.Client
-	model  string
+	openai        openai.Client
+	model         string
+	clientContext int
 }
 
 func New(apiKey string, opts ...Option) (Client, error) {
@@ -126,6 +128,12 @@ func (c *client) Complete(ctx context.Context, latest []query.Message, content s
 		Response: resp,
 	}
 	return res, nil
+}
+
+func (c *client) Update(opts ...Option) {
+	for _, o := range opts {
+		o(c, nil)
+	}
 }
 
 func (c *client) Close() error {

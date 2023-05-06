@@ -22,7 +22,7 @@ func New(store *store.Store, client client.Client, opts ...Option) UI {
 			store:         store,
 			client:        client,
 			styles:        newStaticStyles(),
-			clientTimeout: time.Minute,
+			clientTimeout: 5 * time.Minute,
 			rhsPadding:    2,
 		},
 	}

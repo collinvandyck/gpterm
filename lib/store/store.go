@@ -91,6 +91,15 @@ func New(opts ...StoreOpt) (*Store, error) {
 
 var ErrNoMoreConversations = errors.New("no more conversations")
 
+func (s *Store) GetClientConfig(ctx context.Context) (query.ClientConfig, error) {
+	return s.queries.GetClientConfig(ctx)
+}
+
+func (s *Store) UpdateClientConfig(ctx context.Context, messageContext int64) error {
+	_, err := s.queries.UpdateClientConfig(ctx, messageContext)
+	return err
+}
+
 func (s *Store) GetConfig(ctx context.Context) (Config, error) {
 	return s.queries.GetConfig(ctx)
 }
@@ -214,6 +223,11 @@ func (s *Store) GetTotalUsage(ctx context.Context) (res query.Usage, err error) 
 		TotalTokens:      int64(total),
 	}
 	return
+}
+
+func (s *Store) CycleClientConfig(ctx context.Context) error {
+	_, err := s.queries.CycleClientConfig(ctx)
+	return err
 }
 
 func (s *Store) GetPreviousMessageForRole(ctx context.Context, role string, offset int) (query.Message, error) {

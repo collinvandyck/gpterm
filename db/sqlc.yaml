@@ -8,6 +8,7 @@ sql:
       - "queries/usage.sql"
       - "queries/conversation.sql"
       - "queries/config.sql"
+      - "queries/client_config.sql"
     gen:
       go:
         package: "query"

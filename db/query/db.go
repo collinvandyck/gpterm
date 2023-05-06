@@ -30,8 +30,14 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.createConversationStmt, err = db.PrepareContext(ctx, createConversation); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateConversation: %w", err)
 	}
+	if q.cycleClientConfigStmt, err = db.PrepareContext(ctx, cycleClientConfig); err != nil {
+		return nil, fmt.Errorf("error preparing query CycleClientConfig: %w", err)
+	}
 	if q.getActiveConversationStmt, err = db.PrepareContext(ctx, getActiveConversation); err != nil {
 		return nil, fmt.Errorf("error preparing query GetActiveConversation: %w", err)
+	}
+	if q.getClientConfigStmt, err = db.PrepareContext(ctx, getClientConfig); err != nil {
+		return nil, fmt.Errorf("error preparing query GetClientConfig: %w", err)
 	}
 	if q.getCompletionTokensStmt, err = db.PrepareContext(ctx, getCompletionTokens); err != nil {
 		return nil, fmt.Errorf("error preparing query GetCompletionTokens: %w", err)
@@ -84,6 +90,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.unsetSelectedConversationStmt, err = db.PrepareContext(ctx, unsetSelectedConversation); err != nil {
 		return nil, fmt.Errorf("error preparing query UnsetSelectedConversation: %w", err)
 	}
+	if q.updateClientConfigStmt, err = db.PrepareContext(ctx, updateClientConfig); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateClientConfig: %w", err)
+	}
 	if q.updateCredentialStmt, err = db.PrepareContext(ctx, updateCredential); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateCredential: %w", err)
 	}
@@ -102,9 +111,19 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing createConversationStmt: %w", cerr)
 		}
 	}
+	if q.cycleClientConfigStmt != nil {
+		if cerr := q.cycleClientConfigStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing cycleClientConfigStmt: %w", cerr)
+		}
+	}
 	if q.getActiveConversationStmt != nil {
 		if cerr := q.getActiveConversationStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getActiveConversationStmt: %w", cerr)
+		}
+	}
+	if q.getClientConfigStmt != nil {
+		if cerr := q.getClientConfigStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getClientConfigStmt: %w", cerr)
 		}
 	}
 	if q.getCompletionTokensStmt != nil {
@@ -192,6 +211,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing unsetSelectedConversationStmt: %w", cerr)
 		}
 	}
+	if q.updateClientConfigStmt != nil {
+		if cerr := q.updateClientConfigStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateClientConfigStmt: %w", cerr)
+		}
+	}
 	if q.updateCredentialStmt != nil {
 		if cerr := q.updateCredentialStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing updateCredentialStmt: %w", cerr)
@@ -238,7 +262,9 @@ type Queries struct {
 	tx                               *sql.Tx
 	countMessagesForConversationStmt *sql.Stmt
 	createConversationStmt           *sql.Stmt
+	cycleClientConfigStmt            *sql.Stmt
 	getActiveConversationStmt        *sql.Stmt
+	getClientConfigStmt              *sql.Stmt
 	getCompletionTokensStmt          *sql.Stmt
 	getConfigStmt                    *sql.Stmt
 	getConfigValueStmt               *sql.Stmt
@@ -256,6 +282,7 @@ type Queries struct {
 	setConfigValueStmt               *sql.Stmt
 	setSelectedConversationStmt      *sql.Stmt
 	unsetSelectedConversationStmt    *sql.Stmt
+	updateClientConfigStmt           *sql.Stmt
 	updateCredentialStmt             *sql.Stmt
 }
 
@@ -265,7 +292,9 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		tx:                               tx,
 		countMessagesForConversationStmt: q.countMessagesForConversationStmt,
 		createConversationStmt:           q.createConversationStmt,
+		cycleClientConfigStmt:            q.cycleClientConfigStmt,
 		getActiveConversationStmt:        q.getActiveConversationStmt,
+		getClientConfigStmt:              q.getClientConfigStmt,
 		getCompletionTokensStmt:          q.getCompletionTokensStmt,
 		getConfigStmt:                    q.getConfigStmt,
 		getConfigValueStmt:               q.getConfigValueStmt,
@@ -283,6 +312,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		setConfigValueStmt:               q.setConfigValueStmt,
 		setSelectedConversationStmt:      q.setSelectedConversationStmt,
 		unsetSelectedConversationStmt:    q.unsetSelectedConversationStmt,
+		updateClientConfigStmt:           q.updateClientConfigStmt,
 		updateCredentialStmt:             q.updateCredentialStmt,
 	}
 }
