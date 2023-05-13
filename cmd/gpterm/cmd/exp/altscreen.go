@@ -58,7 +58,7 @@ func (m altScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ready = true
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC:
+		case tea.KeyCtrlC, tea.KeyCtrlD:
 			return m, tea.Quit
 		case tea.KeyCtrlG:
 			m.alt = !m.alt

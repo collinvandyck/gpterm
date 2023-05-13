@@ -41,7 +41,7 @@ func (m scrollback) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Sequence(tea.ClearScreen)
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC:
+		case tea.KeyCtrlC, tea.KeyCtrlD:
 			return m, tea.Quit
 		}
 	}
