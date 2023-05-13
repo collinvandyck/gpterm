@@ -248,7 +248,7 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 
-		case tea.KeyCtrlC:
+		case tea.KeyCtrlC, tea.KeyCtrlD:
 			return m, tea.Quit
 
 		case tea.KeyF1:
