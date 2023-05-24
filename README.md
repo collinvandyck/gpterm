@@ -6,6 +6,10 @@ gpterm is a terminal-based integration with the OpenAI chat API.
 
 https://user-images.githubusercontent.com/596076/230783174-67f512d2-9c8f-4131-a043-db7083b16a04.mp4
 
+gpterm also renders Markdown and syntax-aware code blocks:
+
+<img width="1800" alt="image-2023-05-24-T5sJJ5vm@2x" src="https://github.com/collinvandyck/gpterm/assets/596076/a33c4470-0275-4927-b346-00a68bdcc4e9">
+
 # Installation
 
 Requirements:
