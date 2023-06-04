@@ -34,6 +34,17 @@ var root = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 
+		if pprof {
+			go func() {
+				address := "0.0.0.0:6060"
+				err := http.ListenAndServe(address, nil)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Failed to start pprof HTTP server: %v\n", err)
+					os.Exit(1)
+				}
+			}()
+		}
+
 		lw, err := log.FileWriter(logfile)
 		if err != nil {
 			return err
@@ -85,18 +96,9 @@ func init() {
 }
 
 func main() {
-	if pprof {
-		go func() {
-			address := "localhost:6060"
-			err := http.ListenAndServe(address, nil)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to start pprof HTTP server: %v\n", err)
-				os.Exit(1)
-			}
-		}()
-	}
 	err := root.Execute()
 	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
