@@ -126,6 +126,71 @@ func (s *Store) GetConfigInt(ctx context.Context, name string, defaultValue int)
 	}
 }
 
+func (s *Store) DropConversation(ctx context.Context) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	q := s.queries.WithTx(tx)
+	convos, err := q.ConversationCount(ctx)
+	if err != nil {
+		return err
+	}
+	err = q.DeleteMessagesForCurrentConversation(ctx)
+	if err != nil {
+		return err
+	}
+	if convos == 1 {
+		// nothing left to do
+		return nil
+	}
+	current, err := q.GetActiveConversation(ctx)
+	if err != nil {
+		return err
+	}
+	// we need to switch to the next conversation if it exists,
+	// otherwise switch to the previous conversation.
+	next, err := q.NextConversation(ctx)
+	switch {
+	case err == nil:
+		err = q.UnsetSelectedConversation(ctx)
+		if err != nil {
+			return err
+		}
+		err = q.SetSelectedConversation(ctx, next.ID)
+		if err != nil {
+			return err
+		}
+		_, err = q.DeleteConversation(ctx, current.ID)
+		if err != nil {
+			return err
+		}
+		return tx.Commit()
+	case errs.IsDBNotFound(err):
+	default:
+		return err
+	}
+	// check if there is a previous conversation
+	prev, err := q.PreviousConversation(ctx)
+	if err != nil {
+		return err
+	}
+	err = q.UnsetSelectedConversation(ctx)
+	if err != nil {
+		return err
+	}
+	err = q.SetSelectedConversation(ctx, prev.ID)
+	if err != nil {
+		return err
+	}
+	_, err = q.DeleteConversation(ctx, current.ID)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (s *Store) NextConversation(ctx context.Context) error {
 	tx, err := s.db.Begin()
 	if err != nil {

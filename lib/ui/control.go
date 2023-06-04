@@ -33,8 +33,8 @@ const (
 
 type controlModel struct {
 	uiOpts
-	prompt     tea.Model
-	status     tea.Model
+	prompt     promptModel
+	status     statusModel
 	typewriter tea.Model
 	textInput  textInput
 	backlog    backlog // message backlog loaded from store
@@ -43,6 +43,7 @@ type controlModel struct {
 	inflight   bool    // is there a completion in flight
 	width      int
 	height     int
+	dropCount  int
 }
 
 type textInput struct {
@@ -246,10 +247,37 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds.Add(tea.Sequence(seq...))
 
 	case tea.KeyMsg:
+		dropCancelled := false
+		if msg.Type != tea.KeyCtrlX {
+			if m.dropCount > 0 {
+				m.dropCount = 0
+				m.status.setDrop(m.dropCount)
+				dropCancelled = true
+			}
+		}
 		switch msg.Type {
 
-		case tea.KeyCtrlC, tea.KeyCtrlD:
+		case tea.KeyCtrlC:
+			if dropCancelled {
+				// don't quit on ctrl-c if we are cancelling a drop
+				break
+			}
 			return m, tea.Quit
+
+		case tea.KeyCtrlD:
+			return m, tea.Quit
+
+		case tea.KeyCtrlX:
+			if m.ready && !m.inflight {
+				if m.dropCount == 1 {
+					m.dropCount = 0
+					m.status.setDrop(0)
+					return m, m.dropConvo()
+				} else {
+					m.dropCount++
+					m.status.setDrop(m.dropCount)
+				}
+			}
 
 		case tea.KeyF1:
 			if m.ready && !m.inflight {
@@ -284,8 +312,14 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	m.prompt = cmds.Update(m.prompt, msg)
-	m.status = cmds.Update(m.status, msg)
+	prompt, promptCmd := m.prompt.Update(msg)
+	m.prompt = prompt.(promptModel)
+	cmds.Add(promptCmd)
+
+	status, statusCmd := m.status.Update(msg)
+	m.status = status.(statusModel)
+	cmds.Add(statusCmd)
+
 	m.typewriter = cmds.Update(m.typewriter, msg)
 
 	var textInputCmd tea.Cmd
@@ -445,6 +479,18 @@ func (m controlModel) cycleClientConfig() tea.Cmd {
 		}
 		cc, err := m.store.GetClientConfig(ctx)
 		return gptea.ConfigLoadedMsg{Config: config, ClientConfig: cc, Err: err}
+	}
+}
+
+func (m controlModel) dropConvo() tea.Cmd {
+	return func() tea.Msg {
+		ctx := m.storeContext()
+		err := m.store.DropConversation(ctx)
+		if err != nil {
+			return gptea.ConversationSwitchedMsg{Err: err}
+		}
+		msgs, err := m.store.GetLastMessages(ctx, defaultChatlogMaxSize)
+		return gptea.ConversationSwitchedMsg{Messages: msgs, Err: err}
 	}
 }
 

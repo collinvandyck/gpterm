@@ -22,6 +22,23 @@ func (q *Queries) CountMessagesForConversation(ctx context.Context, conversation
 	return count, err
 }
 
+const deleteMessagesForCurrentConversation = `-- name: DeleteMessagesForCurrentConversation :exec
+;
+
+delete from message
+where id in (
+	select m.id
+	from message m
+	join conversation c on m.conversation_id = c.id
+	where c.selected = true
+)
+`
+
+func (q *Queries) DeleteMessagesForCurrentConversation(ctx context.Context) error {
+	_, err := q.exec(ctx, q.deleteMessagesForCurrentConversationStmt, deleteMessagesForCurrentConversation)
+	return err
+}
+
 const getLatestMessages = `-- name: GetLatestMessages :many
 select id, timestamp, role, content, conversation_id
 from message

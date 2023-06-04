@@ -35,3 +35,12 @@ SELECT ?, ?, id
 from conversation
 where selected = true
 ;
+
+-- name: DeleteMessagesForCurrentConversation :exec
+delete from message
+where id in (
+	select m.id
+	from message m
+	join conversation c on m.conversation_id = c.id
+	where c.selected = true
+);

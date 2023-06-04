@@ -20,6 +20,7 @@ type statusModel struct {
 	ready        bool
 	config       store.Config
 	clientConfig query.ClientConfig
+	drop         int
 }
 
 func newStatusModel(uiOpts uiOpts) statusModel {
@@ -31,6 +32,10 @@ func newStatusModel(uiOpts uiOpts) statusModel {
 			spinner.WithStyle(style),
 		),
 	}
+}
+
+func (m *statusModel) setDrop(drop int) {
+	m.drop = drop
 }
 
 func (m statusModel) Init() tea.Cmd {
@@ -93,6 +98,12 @@ func (m statusModel) help(width int) string {
 	style := lipgloss.NewStyle().Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color("#dddddd"))
 	mc := m.clientConfig.MessageContext
 	model := m.clientConfig.Model
-	text := fmt.Sprintf("↑/↓: History | Ctrl+y Editor | Ctrl+[p/n] Convo | F1/F2 Context (%d) | F3 Model (%s)", mc, model)
+	drop := ""
+	if m.drop == 1 {
+		style := lipgloss.NewStyle().Background(lipgloss.Color("#222222")).Foreground(lipgloss.Color("#dd0000"))
+		drop = " " + style.Render("CONFIRM")
+	}
+	text := fmt.Sprintf("↑/↓: History | Ctrl+y Editor | Ctrl+[p/n] Convo | Ctrl-x Drop%s | F1/F2 Context (%d) | F3 (%s)",
+		drop, mc, model)
 	return style.Width(width).Render(text)
 }

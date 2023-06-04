@@ -1,6 +1,9 @@
 -- name: GetConversations :many
 SELECT * FROM conversation order by id;
 
+-- name: ConversationCount :one
+select count(*) from conversation;
+
 -- name: GetActiveConversation :one
 select * from conversation where selected=true;
 
@@ -33,3 +36,5 @@ where id < (
 order by id desc
 limit 1;
 
+-- name: DeleteConversation :one
+delete from conversation where id = ? returning *;

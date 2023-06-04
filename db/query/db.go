@@ -24,6 +24,9 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.conversationCountStmt, err = db.PrepareContext(ctx, conversationCount); err != nil {
+		return nil, fmt.Errorf("error preparing query ConversationCount: %w", err)
+	}
 	if q.countMessagesForConversationStmt, err = db.PrepareContext(ctx, countMessagesForConversation); err != nil {
 		return nil, fmt.Errorf("error preparing query CountMessagesForConversation: %w", err)
 	}
@@ -32,6 +35,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.cycleClientConfigStmt, err = db.PrepareContext(ctx, cycleClientConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query CycleClientConfig: %w", err)
+	}
+	if q.deleteConversationStmt, err = db.PrepareContext(ctx, deleteConversation); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteConversation: %w", err)
+	}
+	if q.deleteMessagesForCurrentConversationStmt, err = db.PrepareContext(ctx, deleteMessagesForCurrentConversation); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteMessagesForCurrentConversation: %w", err)
 	}
 	if q.getActiveConversationStmt, err = db.PrepareContext(ctx, getActiveConversation); err != nil {
 		return nil, fmt.Errorf("error preparing query GetActiveConversation: %w", err)
@@ -101,6 +110,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.conversationCountStmt != nil {
+		if cerr := q.conversationCountStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing conversationCountStmt: %w", cerr)
+		}
+	}
 	if q.countMessagesForConversationStmt != nil {
 		if cerr := q.countMessagesForConversationStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing countMessagesForConversationStmt: %w", cerr)
@@ -114,6 +128,16 @@ func (q *Queries) Close() error {
 	if q.cycleClientConfigStmt != nil {
 		if cerr := q.cycleClientConfigStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing cycleClientConfigStmt: %w", cerr)
+		}
+	}
+	if q.deleteConversationStmt != nil {
+		if cerr := q.deleteConversationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteConversationStmt: %w", cerr)
+		}
+	}
+	if q.deleteMessagesForCurrentConversationStmt != nil {
+		if cerr := q.deleteMessagesForCurrentConversationStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteMessagesForCurrentConversationStmt: %w", cerr)
 		}
 	}
 	if q.getActiveConversationStmt != nil {
@@ -258,61 +282,67 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                               DBTX
-	tx                               *sql.Tx
-	countMessagesForConversationStmt *sql.Stmt
-	createConversationStmt           *sql.Stmt
-	cycleClientConfigStmt            *sql.Stmt
-	getActiveConversationStmt        *sql.Stmt
-	getClientConfigStmt              *sql.Stmt
-	getCompletionTokensStmt          *sql.Stmt
-	getConfigStmt                    *sql.Stmt
-	getConfigValueStmt               *sql.Stmt
-	getConversationsStmt             *sql.Stmt
-	getCredentialStmt                *sql.Stmt
-	getLatestMessagesStmt            *sql.Stmt
-	getMessagesStmt                  *sql.Stmt
-	getPreviousMessageForRoleStmt    *sql.Stmt
-	getPromptTokensStmt              *sql.Stmt
-	getTotalTokensStmt               *sql.Stmt
-	insertMessageStmt                *sql.Stmt
-	insertUsageStmt                  *sql.Stmt
-	nextConversationStmt             *sql.Stmt
-	previousConversationStmt         *sql.Stmt
-	setConfigValueStmt               *sql.Stmt
-	setSelectedConversationStmt      *sql.Stmt
-	unsetSelectedConversationStmt    *sql.Stmt
-	updateClientConfigStmt           *sql.Stmt
-	updateCredentialStmt             *sql.Stmt
+	db                                       DBTX
+	tx                                       *sql.Tx
+	conversationCountStmt                    *sql.Stmt
+	countMessagesForConversationStmt         *sql.Stmt
+	createConversationStmt                   *sql.Stmt
+	cycleClientConfigStmt                    *sql.Stmt
+	deleteConversationStmt                   *sql.Stmt
+	deleteMessagesForCurrentConversationStmt *sql.Stmt
+	getActiveConversationStmt                *sql.Stmt
+	getClientConfigStmt                      *sql.Stmt
+	getCompletionTokensStmt                  *sql.Stmt
+	getConfigStmt                            *sql.Stmt
+	getConfigValueStmt                       *sql.Stmt
+	getConversationsStmt                     *sql.Stmt
+	getCredentialStmt                        *sql.Stmt
+	getLatestMessagesStmt                    *sql.Stmt
+	getMessagesStmt                          *sql.Stmt
+	getPreviousMessageForRoleStmt            *sql.Stmt
+	getPromptTokensStmt                      *sql.Stmt
+	getTotalTokensStmt                       *sql.Stmt
+	insertMessageStmt                        *sql.Stmt
+	insertUsageStmt                          *sql.Stmt
+	nextConversationStmt                     *sql.Stmt
+	previousConversationStmt                 *sql.Stmt
+	setConfigValueStmt                       *sql.Stmt
+	setSelectedConversationStmt              *sql.Stmt
+	unsetSelectedConversationStmt            *sql.Stmt
+	updateClientConfigStmt                   *sql.Stmt
+	updateCredentialStmt                     *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                               tx,
-		tx:                               tx,
-		countMessagesForConversationStmt: q.countMessagesForConversationStmt,
-		createConversationStmt:           q.createConversationStmt,
-		cycleClientConfigStmt:            q.cycleClientConfigStmt,
-		getActiveConversationStmt:        q.getActiveConversationStmt,
-		getClientConfigStmt:              q.getClientConfigStmt,
-		getCompletionTokensStmt:          q.getCompletionTokensStmt,
-		getConfigStmt:                    q.getConfigStmt,
-		getConfigValueStmt:               q.getConfigValueStmt,
-		getConversationsStmt:             q.getConversationsStmt,
-		getCredentialStmt:                q.getCredentialStmt,
-		getLatestMessagesStmt:            q.getLatestMessagesStmt,
-		getMessagesStmt:                  q.getMessagesStmt,
-		getPreviousMessageForRoleStmt:    q.getPreviousMessageForRoleStmt,
-		getPromptTokensStmt:              q.getPromptTokensStmt,
-		getTotalTokensStmt:               q.getTotalTokensStmt,
-		insertMessageStmt:                q.insertMessageStmt,
-		insertUsageStmt:                  q.insertUsageStmt,
-		nextConversationStmt:             q.nextConversationStmt,
-		previousConversationStmt:         q.previousConversationStmt,
-		setConfigValueStmt:               q.setConfigValueStmt,
-		setSelectedConversationStmt:      q.setSelectedConversationStmt,
-		unsetSelectedConversationStmt:    q.unsetSelectedConversationStmt,
-		updateClientConfigStmt:           q.updateClientConfigStmt,
-		updateCredentialStmt:             q.updateCredentialStmt,
+		db:                                       tx,
+		tx:                                       tx,
+		conversationCountStmt:                    q.conversationCountStmt,
+		countMessagesForConversationStmt:         q.countMessagesForConversationStmt,
+		createConversationStmt:                   q.createConversationStmt,
+		cycleClientConfigStmt:                    q.cycleClientConfigStmt,
+		deleteConversationStmt:                   q.deleteConversationStmt,
+		deleteMessagesForCurrentConversationStmt: q.deleteMessagesForCurrentConversationStmt,
+		getActiveConversationStmt:                q.getActiveConversationStmt,
+		getClientConfigStmt:                      q.getClientConfigStmt,
+		getCompletionTokensStmt:                  q.getCompletionTokensStmt,
+		getConfigStmt:                            q.getConfigStmt,
+		getConfigValueStmt:                       q.getConfigValueStmt,
+		getConversationsStmt:                     q.getConversationsStmt,
+		getCredentialStmt:                        q.getCredentialStmt,
+		getLatestMessagesStmt:                    q.getLatestMessagesStmt,
+		getMessagesStmt:                          q.getMessagesStmt,
+		getPreviousMessageForRoleStmt:            q.getPreviousMessageForRoleStmt,
+		getPromptTokensStmt:                      q.getPromptTokensStmt,
+		getTotalTokensStmt:                       q.getTotalTokensStmt,
+		insertMessageStmt:                        q.insertMessageStmt,
+		insertUsageStmt:                          q.insertUsageStmt,
+		nextConversationStmt:                     q.nextConversationStmt,
+		previousConversationStmt:                 q.previousConversationStmt,
+		setConfigValueStmt:                       q.setConfigValueStmt,
+		setSelectedConversationStmt:              q.setSelectedConversationStmt,
+		unsetSelectedConversationStmt:            q.unsetSelectedConversationStmt,
+		updateClientConfigStmt:                   q.updateClientConfigStmt,
+		updateCredentialStmt:                     q.updateCredentialStmt,
 	}
 }

@@ -9,6 +9,17 @@ import (
 	"context"
 )
 
+const conversationCount = `-- name: ConversationCount :one
+select count(*) from conversation
+`
+
+func (q *Queries) ConversationCount(ctx context.Context) (int64, error) {
+	row := q.queryRow(ctx, q.conversationCountStmt, conversationCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createConversation = `-- name: CreateConversation :one
 insert into conversation (name) values (null)
 returning id, name, protected, selected
@@ -16,6 +27,22 @@ returning id, name, protected, selected
 
 func (q *Queries) CreateConversation(ctx context.Context) (Conversation, error) {
 	row := q.queryRow(ctx, q.createConversationStmt, createConversation)
+	var i Conversation
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Protected,
+		&i.Selected,
+	)
+	return i, err
+}
+
+const deleteConversation = `-- name: DeleteConversation :one
+delete from conversation where id = ? returning id, name, protected, selected
+`
+
+func (q *Queries) DeleteConversation(ctx context.Context, id int64) (Conversation, error) {
+	row := q.queryRow(ctx, q.deleteConversationStmt, deleteConversation, id)
 	var i Conversation
 	err := row.Scan(
 		&i.ID,
