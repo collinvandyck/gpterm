@@ -7,8 +7,8 @@ import (
 type tuiState int
 
 const (
-	stateInit tuiState = iota
-	stateChat
+	tuiStateInit tuiState = iota
+	tuiStateChat
 )
 
 var _ tea.Model = tuiModel{}
@@ -34,12 +34,12 @@ func (m tuiModel) Init() tea.Cmd {
 // Update implements tea.Model.
 func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-	if m.state == stateInit {
-		m.state = stateChat
+	if m.state == tuiStateInit {
+		m.state = tuiStateChat
 		cmds = append(cmds, m.chatModel.Init())
 	}
 	switch m.state {
-	case stateChat:
+	case tuiStateChat:
 		model, cmd := m.chatModel.Update(msg)
 		m.chatModel = model.(chatModel)
 		if cmd != nil {
@@ -58,7 +58,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View implements tea.Model.
 func (m tuiModel) View() string {
 	switch m.state {
-	case stateChat:
+	case tuiStateChat:
 		return m.chatModel.View()
 	default:
 		return ""

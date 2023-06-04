@@ -65,7 +65,7 @@ type backlog struct {
 
 func newChatModel(uiOpts uiOpts) chatModel {
 	res := chatModel{
-		uiOpts: uiOpts.NamedLogger("control"),
+		uiOpts: uiOpts.NamedLogger("chat"),
 		prompt: promptModel{
 			uiOpts: uiOpts.NamedLogger("prompt"),
 			height: 3,
