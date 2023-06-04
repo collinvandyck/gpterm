@@ -31,7 +31,7 @@ const (
 	defaultChatlogMaxSize = 100
 )
 
-type controlModel struct {
+type chatModel struct {
 	uiOpts
 	prompt     promptModel
 	status     statusModel
@@ -63,8 +63,8 @@ type backlog struct {
 	printed  bool
 }
 
-func newControlModel(uiOpts uiOpts) controlModel {
-	res := controlModel{
+func newChatModel(uiOpts uiOpts) chatModel {
+	res := chatModel{
 		uiOpts: uiOpts.NamedLogger("control"),
 		prompt: promptModel{
 			uiOpts: uiOpts.NamedLogger("prompt"),
@@ -78,7 +78,7 @@ func newControlModel(uiOpts uiOpts) controlModel {
 	return res
 }
 
-func (m controlModel) Init() tea.Cmd {
+func (m chatModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.loadBacklog,
 		m.loadConfig,
@@ -88,7 +88,7 @@ func (m controlModel) Init() tea.Cmd {
 	)
 }
 
-func (m controlModel) View() string {
+func (m chatModel) View() string {
 	if !m.ready {
 		return ""
 	}
@@ -101,7 +101,7 @@ func (m controlModel) View() string {
 	return res
 }
 
-func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds commands
 
 	switch msg := msg.(type) {
@@ -314,7 +314,7 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m controlModel) gist() tea.Msg {
+func (m chatModel) gist() tea.Msg {
 	ctx := context.Background()
 	accessToken, err := m.store.GetCredential(ctx, store.CredentialGithubToken)
 	if err != nil {
@@ -399,7 +399,7 @@ func editorIsVim(editor string) bool {
 	}
 }
 
-func (m controlModel) spawnEditor(prompt string) tea.Cmd {
+func (m chatModel) spawnEditor(prompt string) tea.Cmd {
 	const editorEnv = "EDITOR"
 	editor := os.Getenv(editorEnv)
 	if editor == "" {
@@ -454,7 +454,7 @@ func (m controlModel) spawnEditor(prompt string) tea.Cmd {
 	})
 }
 
-func (m controlModel) cycleClientConfig() tea.Cmd {
+func (m chatModel) cycleClientConfig() tea.Cmd {
 	return func() tea.Msg {
 		ctx := m.storeContext()
 		m.store.CycleClientConfig(ctx)
@@ -467,7 +467,7 @@ func (m controlModel) cycleClientConfig() tea.Cmd {
 	}
 }
 
-func (m controlModel) dropConvo() tea.Cmd {
+func (m chatModel) dropConvo() tea.Cmd {
 	return func() tea.Msg {
 		ctx := m.storeContext()
 		err := m.store.DropConversation(ctx)
@@ -479,7 +479,7 @@ func (m controlModel) dropConvo() tea.Cmd {
 	}
 }
 
-func (m controlModel) changeConvoHistory(delta int) tea.Cmd {
+func (m chatModel) changeConvoHistory(delta int) tea.Cmd {
 	return func() tea.Msg {
 		ctx := m.storeContext()
 		val := int(m.config.ClientConfig.MessageContext)
@@ -500,7 +500,7 @@ func (m controlModel) changeConvoHistory(delta int) tea.Cmd {
 	}
 }
 
-func (m controlModel) error(err error) tea.Cmd {
+func (m chatModel) error(err error) tea.Cmd {
 	errStr := m.renderMessage(query.Message{
 		Role:    "error",
 		Content: err.Error(),
@@ -509,7 +509,7 @@ func (m controlModel) error(err error) tea.Cmd {
 	return tea.Println("\n" + errStr)
 }
 
-func (m controlModel) next() tea.Msg {
+func (m chatModel) next() tea.Msg {
 	ctx := m.storeContext()
 	err := m.store.NextConversation(ctx)
 	if err != nil {
@@ -519,7 +519,7 @@ func (m controlModel) next() tea.Msg {
 	return gptea.ConversationSwitchedMsg{Messages: msgs, Err: err}
 }
 
-func (m controlModel) previous() tea.Msg {
+func (m chatModel) previous() tea.Msg {
 	ctx := m.storeContext()
 	err := m.store.PreviousConversation(ctx)
 	if err != nil {
@@ -529,7 +529,7 @@ func (m controlModel) previous() tea.Msg {
 	return gptea.ConversationSwitchedMsg{Messages: msgs, Err: err}
 }
 
-func (m controlModel) loadConfig() tea.Msg {
+func (m chatModel) loadConfig() tea.Msg {
 	ctx := m.storeContext()
 	cfg, err := m.store.GetConfig(ctx)
 	if err != nil {
@@ -539,13 +539,13 @@ func (m controlModel) loadConfig() tea.Msg {
 	return gptea.ConfigLoadedMsg{Config: cfg, ClientConfig: clientCfg, Err: err}
 }
 
-func (m controlModel) loadBacklog() tea.Msg {
+func (m chatModel) loadBacklog() tea.Msg {
 	ctx := m.storeContext()
 	msgs, err := m.store.GetLastMessages(ctx, defaultChatlogMaxSize)
 	return gptea.BacklogMsg{Messages: msgs, Err: err}
 }
 
-func (m controlModel) printBacklog() tea.Cmd {
+func (m chatModel) printBacklog() tea.Cmd {
 	if !m.backlog.set || m.backlog.printed {
 		m.Log("Not printing backlog", "set", m.backlog.set, "printed", m.backlog.printed)
 		return nil
@@ -562,7 +562,7 @@ func (m controlModel) printBacklog() tea.Cmd {
 	)
 }
 
-func (m controlModel) renderBacklogGist() string {
+func (m chatModel) renderBacklogGist() string {
 	buf := bytes.Buffer{}
 	for _, msg := range m.backlog.messages {
 		role := m.styles.Name(msg.Role)
@@ -576,7 +576,7 @@ func (m controlModel) renderBacklogGist() string {
 	return re
 }
 
-func (m controlModel) renderBacklog() string {
+func (m chatModel) renderBacklog() string {
 	start := time.Now()
 	buf := bytes.Buffer{}
 	for _, msg := range m.backlog.messages {
@@ -591,7 +591,7 @@ func (m controlModel) renderBacklog() string {
 	return re
 }
 
-func (m controlModel) renderMessage(msg query.Message) string {
+func (m chatModel) renderMessage(msg query.Message) string {
 	width := m.width
 	if width > m.rhsPadding {
 		width -= m.rhsPadding
@@ -617,7 +617,7 @@ func (m controlModel) renderMessage(msg query.Message) string {
 	return strings.Join([]string{role, rendered.String()}, "\n")
 }
 
-func (m controlModel) completeStream(msg string) tea.Cmd {
+func (m chatModel) completeStream(msg string) tea.Cmd {
 	return func() tea.Msg {
 		csm := gptea.NewStreamCompletion()
 		go func() {
@@ -672,6 +672,6 @@ func (m controlModel) completeStream(msg string) tea.Cmd {
 	}
 }
 
-func (m controlModel) storeContext() context.Context {
+func (m chatModel) storeContext() context.Context {
 	return context.Background()
 }

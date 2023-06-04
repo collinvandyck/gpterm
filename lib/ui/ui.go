@@ -54,7 +54,7 @@ func (t *console) Run(ctx context.Context) error {
 	t.Log("+-------------------+")
 	t.Log("| gpterm starting...|")
 	t.Log("+-------------------+")
-	model := newControlModel(t.uiOpts)
+	model := newTUIModel(t.uiOpts)
 	p := tea.NewProgram(model)
 	_, err := p.Run()
 	return err
