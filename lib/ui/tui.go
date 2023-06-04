@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"fmt"
-
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -35,7 +33,6 @@ func (m tuiModel) Init() tea.Cmd {
 
 // Update implements tea.Model.
 func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	m.Log("Update", "msg", msg, "type", fmt.Sprintf("%T", msg))
 	var cmds []tea.Cmd
 	if m.state == stateInit {
 		m.state = stateChat
@@ -55,7 +52,6 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if len(cmds) == 0 {
 		return m, nil
 	}
-	m.Log("Sending commands", "cmds", cmds)
 	return m, tea.Sequence(cmds...)
 }
 
