@@ -102,7 +102,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 		Short: "migrate up or down (+n | -n)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			n, err := strconv.ParseInt(args[0], 10, 64)
+			n, err := strconv.ParseInt(args[0], 10, 32)
 			if err != nil {
 				return err
 			}
