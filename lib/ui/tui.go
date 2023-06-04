@@ -11,8 +11,6 @@ const (
 	tuiStateChat
 )
 
-var _ tea.Model = tuiModel{}
-
 type tuiModel struct {
 	uiOpts
 	state     tuiState
