@@ -35,8 +35,7 @@ type controlModel struct {
 	uiOpts
 	prompt     promptModel
 	status     statusModel
-	typewriter tea.Model
-	textInput  textInput
+	typewriter typewriterModel
 	backlog    backlog // message backlog loaded from store
 	config     config  // persisted config
 	ready      bool    // has the terminal initialized
@@ -96,10 +95,6 @@ func (m controlModel) View() string {
 	var res string
 	res += m.typewriter.View()
 	res += "\n"
-	if m.textInput.active {
-		res += m.textInput.View()
-		res += "\n"
-	}
 	res += m.prompt.View()
 	res += "\n"
 	res += m.status.View()
@@ -218,14 +213,6 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case gptea.ErrorMsg:
 		cmds.Add(m.error(msg.Err))
 
-	case gptea.SetCredentialReq:
-		m.textInput.active = true
-		m.textInput.credentialName = store.CredentialGithubToken
-		m.textInput.Model = textinput.New()
-		m.textInput.Model.Prompt = msg.Prompt
-		m.textInput.Model.EchoMode = textinput.EchoPassword
-		m.textInput.Model.Focus()
-
 	case gptea.GistResultMsg:
 		seq := []tea.Cmd{}
 		if msg.Err != nil {
@@ -320,11 +307,9 @@ func (m controlModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.status = status.(statusModel)
 	cmds.Add(statusCmd)
 
-	m.typewriter = cmds.Update(m.typewriter, msg)
-
-	var textInputCmd tea.Cmd
-	m.textInput.Model, textInputCmd = m.textInput.Model.Update(msg)
-	cmds.Add(textInputCmd)
+	typewriter, typewriterCmd := m.typewriter.Update(msg)
+	m.typewriter = typewriter.(typewriterModel)
+	cmds.Add(typewriterCmd)
 
 	return m, tea.Batch(cmds...)
 }
