@@ -6,7 +6,7 @@ require (
 	github.com/alecthomas/chroma v0.10.0
 	github.com/charmbracelet/bubbles v0.15.0
 	github.com/charmbracelet/bubbletea v0.23.3-0.20230602100533-baf07f4d1cd6
-	github.com/charmbracelet/glow v1.5.0
+	github.com/charmbracelet/glow v1.5.1
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/google/go-github/v39 v39.2.0
@@ -56,7 +56,7 @@ require (
 	github.com/bytecodealliance/wasmtime-go/v5 v5.0.0 // indirect
 	github.com/calmh/randomart v1.1.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
-	github.com/charmbracelet/charm v0.8.6 // indirect
+	github.com/charmbracelet/charm v0.8.7 // indirect
 	github.com/charmbracelet/glamour v0.6.0 // indirect
 	github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 // indirect
 	github.com/cockroachdb/cockroach-go/v2 v2.1.1 // indirect
@@ -172,9 +172,9 @@ require (
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	golang.org/x/term v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/term v0.7.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/api v0.102.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
