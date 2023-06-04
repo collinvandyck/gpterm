@@ -36,8 +36,22 @@ Once the API key has been set, have fun!
 	# enter an interactive session
 	gpterm
 
-Note that there are other subcommand attached to the `gpterm` command. Those are meant for development and are
-not useful outside of the repo.
+# Using gpterm
+
+Once you're in gpterm, there are a handful of controls you can use to tailor
+your experience.
+
+- `Ctrl-y` spawn an editor to craft your message instead of using the text
+  widget.
+- `Ctrl-p/Ctrl-n` switch between previous and next conversations.
+- `Ctrl-x` drops the current conversation. `Ctrl-x` again to confirm.
+- `F1/F2` change the amount of conversation context sent to OpenAI on each
+  request. Higher values will result in more coherence but at a greater API
+  cost.
+- `F3` change the GPT model. Currently supports `gpt-3.5-turbo` and `gpt-4`. You
+  must have `gpt-4` access for that mode to work. Because costs between the
+  models are quite different, gpterm remembers the amount of conversation
+  context to send per-model.
 
 # Storage
 
@@ -60,9 +74,4 @@ Conversations should be able to be uploaded to a gist.
 ## Hotkey Support
 
 Actions should be able to be found to user-configured keys.
-
-# Contributing
-
-It's too early to accept pull requests given how early this project is. Please feel free to file an issue if you
-found a bug or have a feature request.
 
