@@ -12,5 +12,6 @@ func Exp(deps *cobra.Command) *cobra.Command {
 	exp.AddCommand(altScreenCmd())
 	exp.AddCommand(markdownCmd())
 	exp.AddCommand(lipglossCmd())
+	exp.AddCommand(optionsCmd())
 	return exp
 }
