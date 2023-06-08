@@ -105,8 +105,7 @@ func (m tuiModel) switchModel() (tuiModel, tea.Cmd) {
 		model, cmd := m.chat.Update(m.windowSize)
 		m.chat = model.(chatModel)
 		cmds = append(cmds, cmd)
-		model, cmd = m.chat.reset()
-		m.chat = model.(chatModel)
+		cmd = m.chat.Init()
 		cmds = append(cmds, cmd)
 		return m, tea.Sequence(cmds...)
 	default:
