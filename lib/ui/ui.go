@@ -15,6 +15,14 @@ type UI interface {
 	Run(ctx context.Context) error
 }
 
+type Option func(*console)
+
+func WithLogger(logger log.Logger) Option {
+	return func(c *console) {
+		c.Logger = logger
+	}
+}
+
 func New(store *store.Store, client client.Client, opts ...Option) UI {
 	console := &console{
 		uiOpts: uiOpts{

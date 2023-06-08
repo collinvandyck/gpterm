@@ -36,6 +36,15 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = tuiStateChat
 		cmds = append(cmds, m.chatModel.Init())
 	}
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+h":
+			return m, tea.Quit
+		}
+	}
+
 	switch m.state {
 	case tuiStateChat:
 		model, cmd := m.chatModel.Update(msg)

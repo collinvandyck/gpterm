@@ -1,13 +1,21 @@
 package ui
 
-import (
-	"github.com/collinvandyck/gpterm/lib/log"
-)
+import tea "github.com/charmbracelet/bubbletea"
 
-type Option func(*console)
+type options struct {
+}
 
-func WithLogger(logger log.Logger) Option {
-	return func(c *console) {
-		c.Logger = logger
-	}
+// Init implements tea.Model.
+func (o options) Init() tea.Cmd {
+	return nil
+}
+
+// Update implements tea.Model.
+func (o options) Update(tea.Msg) (tea.Model, tea.Cmd) {
+	return o, nil
+}
+
+// View implements tea.Model.
+func (o options) View() string {
+	return "options"
 }
