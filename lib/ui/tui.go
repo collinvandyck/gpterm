@@ -47,6 +47,12 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+h":
+			switch m.state {
+			case tuiStateChat:
+				if !m.chat.isReady() {
+					return m, nil
+				}
+			}
 			return m.switchModel()
 		case "ctrl+c":
 			switch m.state {
