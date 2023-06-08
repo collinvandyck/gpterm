@@ -9,18 +9,21 @@ type tuiState int
 const (
 	tuiStateInit tuiState = iota
 	tuiStateChat
+	tuiStateOptions
 )
 
 type tuiModel struct {
 	uiOpts
-	state     tuiState
-	chatModel chatModel
+	state   tuiState
+	chat    chatModel
+	options optionsModel
 }
 
 func newTUIModel(opts uiOpts) tuiModel {
 	return tuiModel{
-		uiOpts:    opts.NamedLogger("tui"),
-		chatModel: newChatModel(opts),
+		uiOpts:  opts.NamedLogger("tui"),
+		chat:    newChatModel(opts),
+		options: newOptionsModel(opts),
 	}
 }
 
@@ -34,21 +37,27 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 	if m.state == tuiStateInit {
 		m.state = tuiStateChat
-		cmds = append(cmds, m.chatModel.Init())
+		cmds = append(cmds, m.chat.Init())
 	}
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+h":
-			return m, tea.Quit
+			return m.switchModel()
 		}
 	}
 
 	switch m.state {
 	case tuiStateChat:
-		model, cmd := m.chatModel.Update(msg)
-		m.chatModel = model.(chatModel)
+		model, cmd := m.chat.Update(msg)
+		m.chat = model.(chatModel)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case tuiStateOptions:
+		model, cmd := m.options.Update(msg)
+		m.options = model.(optionsModel)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
@@ -66,8 +75,26 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m tuiModel) View() string {
 	switch m.state {
 	case tuiStateChat:
-		return m.chatModel.View()
+		return m.chat.View()
+	case tuiStateOptions:
+		return m.options.View()
 	default:
 		return ""
+	}
+}
+
+func (m tuiModel) switchModel() (tuiModel, tea.Cmd) {
+	cmds := []tea.Cmd{tea.ClearScreen}
+	switch m.state {
+	case tuiStateChat:
+		m.state = tuiStateOptions
+		cmds = append(cmds, m.options.Init())
+		return m, tea.Sequence(cmds...)
+	case tuiStateOptions:
+		m.state = tuiStateChat
+		cmds = append(cmds, m.chat.Init())
+		return m, tea.Sequence(cmds...)
+	default:
+		return m, nil
 	}
 }
