@@ -21,6 +21,8 @@ func optionsCmd() *cobra.Command {
 }
 
 type optionsModel struct {
+	width  int
+	height int
 }
 
 // Init implements tea.Model.
@@ -31,6 +33,8 @@ func (m optionsModel) Init() tea.Cmd {
 // Update implements tea.Model.
 func (m optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width, m.height = msg.Width, msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":

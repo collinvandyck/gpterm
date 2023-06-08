@@ -14,9 +14,10 @@ const (
 
 type tuiModel struct {
 	uiOpts
-	state   tuiState
-	chat    chatModel
-	options optionsModel
+	state      tuiState
+	chat       chatModel
+	options    optionsModel
+	windowSize tea.WindowSizeMsg
 }
 
 func newTUIModel(opts uiOpts) tuiModel {
@@ -41,6 +42,8 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.windowSize = msg
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+h":
@@ -93,12 +96,17 @@ func (m tuiModel) switchModel() (tuiModel, tea.Cmd) {
 	switch m.state {
 	case tuiStateChat:
 		m.state = tuiStateOptions
-		cmds = append(cmds, m.options.Init())
+		model, cmd := m.options.Update(m.windowSize)
+		m.options = model.(optionsModel)
+		cmds = append(cmds, m.options.Init(), cmd)
 		return m, tea.Sequence(cmds...)
 	case tuiStateOptions:
 		m.state = tuiStateChat
-		var cmd tea.Cmd
-		m.chat, cmd = m.chat.reset()
+		model, cmd := m.chat.Update(m.windowSize)
+		m.chat = model.(chatModel)
+		cmds = append(cmds, cmd)
+		model, cmd = m.chat.reset()
+		m.chat = model.(chatModel)
 		cmds = append(cmds, cmd)
 		return m, tea.Sequence(cmds...)
 	default:
