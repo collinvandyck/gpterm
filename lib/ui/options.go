@@ -18,7 +18,12 @@ func (o optionsModel) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-func (o optionsModel) Update(tea.Msg) (tea.Model, tea.Cmd) {
+func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		}
+	}
 	return o, nil
 }
 

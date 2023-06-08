@@ -101,6 +101,14 @@ func (m chatModel) View() string {
 	return res
 }
 
+func (m chatModel) reset() (chatModel, tea.Cmd) {
+	m.backlog.printed = false
+	seq := []tea.Cmd{}
+	seq = append(seq, gptea.ClearScrollback)
+	seq = append(seq, m.printBacklog())
+	return m, tea.Sequence(seq...)
+}
+
 func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds commands
 

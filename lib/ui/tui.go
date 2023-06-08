@@ -45,6 +45,11 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+h":
 			return m.switchModel()
+		case "ctrl+c":
+			switch m.state {
+			case tuiStateOptions:
+				return m.switchModel()
+			}
 		}
 	}
 
@@ -92,7 +97,9 @@ func (m tuiModel) switchModel() (tuiModel, tea.Cmd) {
 		return m, tea.Sequence(cmds...)
 	case tuiStateOptions:
 		m.state = tuiStateChat
-		cmds = append(cmds, m.chat.Init())
+		var cmd tea.Cmd
+		m.chat, cmd = m.chat.reset()
+		cmds = append(cmds, cmd)
 		return m, tea.Sequence(cmds...)
 	default:
 		return m, nil
