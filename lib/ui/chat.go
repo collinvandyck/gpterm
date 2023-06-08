@@ -31,15 +31,35 @@ const (
 	defaultChatlogMaxSize = 100
 )
 
+type chatState int
+
+const (
+	chatStateInit chatState = iota
+	chatStateReady
+	chatStateWaiting
+)
+
+func (s chatState) String() string {
+	switch s {
+	case chatStateInit:
+		return "init"
+	case chatStateReady:
+		return "ready"
+	case chatStateWaiting:
+		return "waiting"
+	default:
+		return "unknown"
+	}
+}
+
 type chatModel struct {
 	uiOpts
+	state      chatState
 	prompt     promptModel
 	status     statusModel
 	typewriter typewriterModel
 	backlog    backlog // message backlog loaded from store
 	config     config  // persisted config
-	ready      bool    // has the terminal initialized
-	inflight   bool    // is there a completion in flight
 	width      int
 	height     int
 	dropCount  int
@@ -89,7 +109,7 @@ func (m chatModel) Init() tea.Cmd {
 }
 
 func (m chatModel) View() string {
-	if !m.ready {
+	if m.state == chatStateInit {
 		return ""
 	}
 	var res string
@@ -98,15 +118,13 @@ func (m chatModel) View() string {
 	res += m.prompt.View()
 	res += "\n"
 	res += m.status.View()
+	res += "\n"
+	res += m.state.String()
 	return res
 }
 
-func (m chatModel) reset() (chatModel, tea.Cmd) {
-	m.backlog.printed = false
-	seq := []tea.Cmd{}
-	seq = append(seq, gptea.ClearScrollback)
-	seq = append(seq, m.printBacklog())
-	return m, tea.Sequence(seq...)
+func (m chatModel) isReady() bool {
+	return m.state == chatStateReady
 }
 
 func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -115,12 +133,14 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case gptea.WindowSizeMsg:
-		m.ready = msg.Ready
+		if msg.Ready {
+			m.state = chatStateReady
+		}
 		m.width, m.height = msg.Width, msg.Height
 
 	case tea.WindowSizeMsg:
 		m.Log("Window size changed", "width", msg.Width, "height", msg.Height)
-		m.ready = false
+		m.state = chatStateInit
 		m.backlog.printed = false
 		m.width, m.height = msg.Width, msg.Height
 		// when the window changes size we must send this seq
@@ -177,7 +197,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case gptea.StreamCompletionReq:
-		m.inflight = true
+		m.state = chatStateWaiting
 		um := query.Message{
 			Role:    openai.ChatMessageRoleUser,
 			Content: msg.Text,
@@ -195,7 +215,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		))
 
 	case gptea.StreamCompletionResult:
-		m.inflight = false
+		m.state = chatStateReady
 		if msg.Err != nil {
 			cmds.Add(m.error(msg.Err))
 			break
@@ -208,7 +228,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case gptea.EditorRequestMsg:
-		if m.ready && !m.inflight {
+		if m.isReady() {
 			cmds.Add(m.spawnEditor(msg.Prompt))
 		}
 
@@ -263,44 +283,51 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case tea.KeyCtrlX:
-			if m.ready && !m.inflight {
-				if m.dropCount == 1 {
-					m.dropCount = 0
-					m.status.setDrop(0)
-					return m, m.dropConvo()
-				} else {
-					m.dropCount++
-					m.status.setDrop(m.dropCount)
-				}
+			if !m.isReady() {
+				break
+			}
+			if m.dropCount == 1 {
+				m.dropCount = 0
+				m.status.setDrop(0)
+				return m, m.dropConvo()
+			} else {
+				m.dropCount++
+				m.status.setDrop(m.dropCount)
 			}
 
 		case tea.KeyF1:
-			if m.ready && !m.inflight {
-				cmds.Add(m.changeConvoHistory(-1))
+			if !m.isReady() {
+				break
 			}
+			cmds.Add(m.changeConvoHistory(-1))
 
 		case tea.KeyF2:
-			if m.ready && !m.inflight {
-				cmds.Add(m.changeConvoHistory(+1))
+			if !m.isReady() {
+				break
 			}
+			cmds.Add(m.changeConvoHistory(+1))
 
 		case tea.KeyF3:
-			if m.ready && !m.inflight {
-				cmds.Add(m.cycleClientConfig())
+			if !m.isReady() {
+				break
 			}
+			cmds.Add(m.cycleClientConfig())
+
 		case tea.KeyF12:
 			// gist support isn't ready yet
 			// cmds.Add(m.gist)
 
 		case tea.KeyCtrlP:
-			if m.ready && !m.inflight {
-				cmds.Add(m.previous)
+			if !m.isReady() {
+				break
 			}
+			cmds.Add(m.previous)
 
 		case tea.KeyCtrlN:
-			if m.ready && !m.inflight {
-				cmds.Add(m.next)
+			if !m.isReady() {
+				break
 			}
+			cmds.Add(m.next)
 
 		default:
 
