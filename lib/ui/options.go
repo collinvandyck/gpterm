@@ -47,7 +47,7 @@ func (o optionsModel) View() string {
 		Reverse(false).
 		Underline(true).
 		Foreground(lipgloss.Color("#FAFAFA")).
-		Background(lipgloss.Color("#7D56F4")).
+		Background(lipgloss.Color("#151f18")).
 		Width(width).
 		Height(height).
 		AlignHorizontal(lipgloss.Center).

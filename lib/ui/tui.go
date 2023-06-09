@@ -126,7 +126,8 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			switch m.state {
 			case tuiStateOptions:
-				return m.switchModel()
+				return m, tea.Quit
+				//return m.switchModel()
 			}
 		}
 	}
