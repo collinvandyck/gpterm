@@ -17,6 +17,7 @@ type tuiModel struct {
 	state      tuiState
 	chat       chatModel
 	options    optionsModel
+	current    tea.Model
 	windowSize tea.WindowSizeMsg
 }
 
@@ -33,17 +34,43 @@ func (m tuiModel) Init() tea.Cmd {
 	return nil
 }
 
+func (m *tuiModel) propagateUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch m.state {
+	case tuiStateChat:
+		return m.chat.Update(msg)
+	case tuiStateOptions:
+		return m.options.Update(msg)
+	}
+	return m, nil
+}
+
+func (m *tuiModel) setState(state tuiState) {
+	m.state = state
+	switch state {
+	case tuiStateChat:
+		m.current = m.chat
+	case tuiStateOptions:
+		m.current = m.options
+	}
+}
+
 // Update implements tea.Model.
 func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-	if m.state == tuiStateInit {
-		m.state = tuiStateChat
-		cmds = append(cmds, m.chat.Init())
-	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.windowSize = msg
+		// we can init once we know the size.
+		if m.state == tuiStateInit {
+			startInChat := true
+			if startInChat {
+				m.setState(tuiStateChat)
+			} else {
+				m.setState(tuiStateOptions)
+			}
+			m.current.Update(msg)
+		}
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+h":
@@ -99,23 +126,20 @@ func (m tuiModel) View() string {
 }
 
 func (m tuiModel) switchModel() (tuiModel, tea.Cmd) {
-	cmds := []tea.Cmd{tea.ClearScreen}
+	var cmds []tea.Cmd
 	switch m.state {
 	case tuiStateChat:
 		m.state = tuiStateOptions
 		model, cmd := m.options.Update(m.windowSize)
 		m.options = model.(optionsModel)
 		cmds = append(cmds, m.options.Init(), cmd)
-		return m, tea.Sequence(cmds...)
 	case tuiStateOptions:
 		m.state = tuiStateChat
 		model, cmd := m.chat.Update(m.windowSize)
 		m.chat = model.(chatModel)
-		cmds = append(cmds, cmd)
-		cmd = m.chat.Init()
-		cmds = append(cmds, cmd)
-		return m, tea.Sequence(cmds...)
+		cmds = append(cmds, m.chat.Init(), cmd)
 	default:
 		return m, nil
 	}
+	return m, tea.Sequence(cmds...)
 }

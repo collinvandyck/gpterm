@@ -1,6 +1,9 @@
 package ui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
 
 type optionsModel struct {
 	uiOpts
@@ -29,5 +32,14 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (o optionsModel) View() string {
-	return "options"
+	var style = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#FAFAFA")).
+		Background(lipgloss.Color("#7D56F4")).
+		PaddingTop(20).
+		PaddingBottom(20).
+		PaddingLeft(16).
+		PaddingRight(16).
+		Width(22)
+	return style.Render("Hello, kitty")
 }
