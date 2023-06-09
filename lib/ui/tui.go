@@ -82,19 +82,23 @@ func (m *tuiModel) currentInit() tea.Cmd {
 }
 
 func (m tuiModel) switchModel() (tuiModel, tea.Cmd) {
+	cmds := []tea.Cmd{}
 	switch m.state {
 	case tuiStateInit:
 		m.setState(tuiStateChat)
 	case tuiStateChat:
+		cmds = append(cmds, tea.ClearScreen)
 		m.setState(tuiStateOptions)
 	case tuiStateOptions:
 		m.setState(tuiStateChat)
 	default:
 		return m, nil
 	}
-	updateCmd := m.currentUpdate(m.windowSize)
-	initCmd := m.currentInit()
-	return m, tea.Sequence(updateCmd, initCmd)
+	cmds = append(cmds,
+		m.currentUpdate(m.windowSize),
+		m.currentInit(),
+	)
+	return m, tea.Sequence(cmds...)
 }
 
 // Update implements tea.Model.

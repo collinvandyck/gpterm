@@ -7,6 +7,8 @@ import (
 
 type optionsModel struct {
 	uiOpts
+	width  int
+	height int
 }
 
 func newOptionsModel(opts uiOpts) optionsModel {
@@ -23,6 +25,8 @@ func (o optionsModel) Init() tea.Cmd {
 // Update implements tea.Model.
 func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		o.width, o.height = msg.Width, msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
 		}
@@ -36,10 +40,10 @@ func (o optionsModel) View() string {
 		Bold(true).
 		Foreground(lipgloss.Color("#FAFAFA")).
 		Background(lipgloss.Color("#7D56F4")).
-		PaddingTop(20).
-		PaddingBottom(20).
-		PaddingLeft(16).
-		PaddingRight(16).
-		Width(22)
-	return style.Render("Hello, kitty")
+		Width(o.width).
+		Height(o.height).
+		Align(lipgloss.Center).
+		AlignVertical(lipgloss.Center)
+
+	return style.Render("Jeeves reporting for duty")
 }
