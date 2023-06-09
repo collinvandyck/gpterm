@@ -83,6 +83,8 @@ func (m *tuiModel) currentInit() tea.Cmd {
 
 func (m tuiModel) switchModel() (tuiModel, tea.Cmd) {
 	switch m.state {
+	case tuiStateInit:
+		m.setState(tuiStateChat)
 	case tuiStateChat:
 		m.setState(tuiStateOptions)
 	case tuiStateOptions:
@@ -101,17 +103,11 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		// important to set the window size beforehand
 		m.windowSize = msg
-		// we can init once we know the size.
 		if m.state == tuiStateInit {
-			startInChat := true
-			if startInChat {
-				m.setState(tuiStateChat)
-			} else {
-				m.setState(tuiStateOptions)
-			}
-			cmds = append(cmds, m.currentInit())
-			cmds = append(cmds, m.currentUpdate(msg))
+			// set the model if this is our first window size
+			return m.switchModel()
 		}
 	case tea.KeyMsg:
 		switch msg.String() {
