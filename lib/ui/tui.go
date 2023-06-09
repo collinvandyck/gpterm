@@ -79,6 +79,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, tea.Println("unhandled state"))
 		cmds = append(cmds, tea.Quit)
 	}
+
 	if len(cmds) == 0 {
 		return m, nil
 	}
