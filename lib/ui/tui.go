@@ -12,12 +12,24 @@ const (
 	tuiStateOptions
 )
 
+func (s tuiState) String() string {
+	switch s {
+	case tuiStateInit:
+		return "init"
+	case tuiStateChat:
+		return "chat"
+	case tuiStateOptions:
+		return "options"
+	default:
+		return "unknown"
+	}
+}
+
 type tuiModel struct {
 	uiOpts
 	state      tuiState
 	chat       chatModel
 	options    optionsModel
-	current    tea.Model
 	windowSize tea.WindowSizeMsg
 }
 
@@ -34,24 +46,53 @@ func (m tuiModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m *tuiModel) propagateUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *tuiModel) currentUpdate(msg tea.Msg) tea.Cmd {
 	switch m.state {
 	case tuiStateChat:
-		return m.chat.Update(msg)
+		model, cmd := m.chat.Update(msg)
+		m.chat = model.(chatModel)
+		return cmd
 	case tuiStateOptions:
-		return m.options.Update(msg)
+		model, cmd := m.options.Update(msg)
+		m.options = model.(optionsModel)
+		return cmd
+	default:
+		return tea.Sequence(tea.Println("unknown state"), tea.Quit)
 	}
-	return m, nil
 }
 
 func (m *tuiModel) setState(state tuiState) {
+	m.Log("Setting state", "state", state)
 	m.state = state
 	switch state {
 	case tuiStateChat:
-		m.current = m.chat
 	case tuiStateOptions:
-		m.current = m.options
 	}
+}
+
+func (m *tuiModel) currentInit() tea.Cmd {
+	switch m.state {
+	case tuiStateChat:
+		return m.chat.Init()
+	case tuiStateOptions:
+		return m.options.Init()
+	default:
+		return tea.Sequence(tea.Println("unknown state"), tea.Quit)
+	}
+}
+
+func (m tuiModel) switchModel() (tuiModel, tea.Cmd) {
+	switch m.state {
+	case tuiStateChat:
+		m.setState(tuiStateOptions)
+	case tuiStateOptions:
+		m.setState(tuiStateChat)
+	default:
+		return m, nil
+	}
+	updateCmd := m.currentUpdate(m.windowSize)
+	initCmd := m.currentInit()
+	return m, tea.Sequence(updateCmd, initCmd)
 }
 
 // Update implements tea.Model.
@@ -69,7 +110,8 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.setState(tuiStateOptions)
 			}
-			m.current.Update(msg)
+			cmds = append(cmds, m.currentInit())
+			cmds = append(cmds, m.currentUpdate(msg))
 		}
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -123,23 +165,4 @@ func (m tuiModel) View() string {
 	default:
 		return ""
 	}
-}
-
-func (m tuiModel) switchModel() (tuiModel, tea.Cmd) {
-	var cmds []tea.Cmd
-	switch m.state {
-	case tuiStateChat:
-		m.state = tuiStateOptions
-		model, cmd := m.options.Update(m.windowSize)
-		m.options = model.(optionsModel)
-		cmds = append(cmds, m.options.Init(), cmd)
-	case tuiStateOptions:
-		m.state = tuiStateChat
-		model, cmd := m.chat.Update(m.windowSize)
-		m.chat = model.(chatModel)
-		cmds = append(cmds, m.chat.Init(), cmd)
-	default:
-		return m, nil
-	}
-	return m, tea.Sequence(cmds...)
 }
