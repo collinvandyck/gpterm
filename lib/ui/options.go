@@ -36,14 +36,23 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (o optionsModel) View() string {
+	var (
+		margin = 5
+		height = o.height - margin*2
+		width  = o.width - margin*2
+	)
 	var style = lipgloss.NewStyle().
 		Bold(true).
+		Blink(true).
+		Reverse(false).
+		Underline(true).
 		Foreground(lipgloss.Color("#FAFAFA")).
 		Background(lipgloss.Color("#7D56F4")).
-		Width(o.width).
-		Height(o.height).
+		Width(width).
+		Height(height).
 		Align(lipgloss.Center).
-		AlignVertical(lipgloss.Center)
+		AlignVertical(lipgloss.Center).
+		Margin(margin)
 
 	return style.Render("Jeeves reporting for duty")
 }
