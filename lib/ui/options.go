@@ -37,7 +37,7 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View implements tea.Model.
 func (o optionsModel) View() string {
 	var (
-		margin = 5
+		margin = 2
 		height = o.height - margin*2
 		width  = o.width - margin*2
 	)
