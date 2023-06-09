@@ -38,14 +38,17 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (o optionsModel) View() string {
 	var (
 		margin = 2
-		height = o.height - margin*2
-		width  = o.width - margin*2
+		border = 1
+		height = o.height - margin*2 - border*2
+		width  = o.width - margin*2 - border*2
 	)
 	var style = lipgloss.NewStyle().
 		Bold(true).
 		Blink(true).
 		Reverse(false).
 		Underline(true).
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("63")).
 		Foreground(lipgloss.Color("#FAFAFA")).
 		Background(lipgloss.Color("#151f18")).
 		Width(width).
@@ -54,5 +57,7 @@ func (o optionsModel) View() string {
 		AlignVertical(lipgloss.Center).
 		Margin(margin)
 
-	return style.Render("Jeeves reporting for duty")
+	var inner = lipgloss.Place(20, 30, lipgloss.Center, lipgloss.Center, "hello world")
+
+	return style.Render(inner)
 }
