@@ -21,8 +21,12 @@ type option struct {
 
 func newOptionsModel(opts uiOpts) optionsModel {
 	return optionsModel{
-		uiOpts:  opts.NamedLogger("options"),
-		options: []option{},
+		uiOpts: opts.NamedLogger("options"),
+		options: []option{
+			{
+				name: "api key",
+			},
+		},
 	}
 }
 
