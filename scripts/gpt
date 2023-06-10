@@ -10,5 +10,7 @@ if [[ $# -eq 0 ]]; then
 	args="--log ${root}/gpterm.log --request-log ${root}/request.log --pprof=true"
 fi
 
+export CGO_ENABLED=0
 exec go run $pkg $args $@
+
 
