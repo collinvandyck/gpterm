@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/collinvandyck/gpterm/lib/sqlite"
-	"github.com/collinvandyck/gpterm/lib/ui/options"
 )
 
 type optionsModel struct {
@@ -22,7 +21,7 @@ type optionsModel struct {
 
 type option struct {
 	name  string
-	model options.Interface
+	model optionInterface
 }
 
 func newOptionsModel(opts uiOpts) optionsModel {
@@ -32,11 +31,11 @@ func newOptionsModel(opts uiOpts) optionsModel {
 	model.options = []option{
 		{
 			name:  "api key",
-			model: options.NewAPIKeyModel(),
+			model: newApiKeyOption(),
 		},
 		{
 			name:  "something else",
-			model: options.NewAPIKeyModel(),
+			model: newApiKeyOption(),
 		},
 	}
 	return model
