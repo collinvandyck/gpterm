@@ -74,6 +74,7 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		o.width, o.height = msg.Width, msg.Height
 	case tea.KeyMsg:
+		// navigation in the menu
 		if !o.active {
 			switch msg.String() {
 			case "j", "down":
@@ -87,6 +88,7 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		} else {
+			// esc is how we back out of an active option
 			switch msg.String() {
 			case "esc":
 				o.active = !o.active
@@ -96,6 +98,7 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return o, o.tick()
 	}
 	if o.active {
+		// pass through the message to the active option
 		var cmd tea.Cmd
 		o.options[o.selected].model, cmd = o.options[o.selected].model.Update(msg)
 		if cmd != nil {
