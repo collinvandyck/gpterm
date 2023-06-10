@@ -15,11 +15,11 @@ import (
 	"github.com/collinvandyck/gpterm/lib/errs"
 	"github.com/collinvandyck/gpterm/lib/log"
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
+	_ "github.com/golang-migrate/migrate/v4/database/sqlite"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/sashabaranov/go-openai"
+	_ "modernc.org/sqlite"
 )
 
 const (
@@ -417,7 +417,7 @@ func (s *Store) migrate() error {
 	if err != nil {
 		return err
 	}
-	path := "sqlite3://" + s.DBPath()
+	path := "sqlite://" + s.DBPath()
 	mg, err := migrate.NewWithSourceInstance("iofs", sourceDriver, path)
 	if err != nil {
 		return err
@@ -432,7 +432,7 @@ func (s *Store) migrate() error {
 }
 
 func (s *Store) initDB() error {
-	db, err := sql.Open("sqlite3", s.DBPath())
+	db, err := sql.Open("sqlite", s.DBPath())
 	if err != nil {
 		return err
 	}

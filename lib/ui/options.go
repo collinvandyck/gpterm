@@ -1,11 +1,13 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/collinvandyck/gpterm/lib/sqlite"
 )
 
 type optionsModel struct {
@@ -80,7 +82,9 @@ func (o optionsModel) View() string {
 
 	header1 := styleHeader.Render("gpterm options menu")
 	header2 := styleHeader.Render(time.Now().Truncate(time.Second).String())
-	header := lipgloss.JoinVertical(lipgloss.Top, header1, header2)
+	header3 := styleHeader.Render(fmt.Sprintf("cgo enabled: %v", sqlite.CGO_ENABLED))
+	header := lipgloss.JoinVertical(lipgloss.Top, header1, header2, header3)
+
 	doc.WriteString(header)
 	doc.WriteString("\n\n")
 

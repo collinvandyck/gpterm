@@ -55,7 +55,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			path := "sqlite3://" + dbPath
+			path := "sqlite://" + dbPath
 			mg, err := migrate.NewWithSourceInstance("iofs", sourceDriver, path)
 			if err != nil {
 				return err
@@ -82,7 +82,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			path := "sqlite3://" + dbPath
+			path := "sqlite://" + dbPath
 			mg, err := migrate.NewWithSourceInstance("iofs", sourceDriver, path)
 			if err != nil {
 				return err
@@ -114,7 +114,7 @@ func Migrate(deps *cobra.Command) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			path := "sqlite3://" + dbPath
+			path := "sqlite://" + dbPath
 			mg, err := migrate.NewWithSourceInstance("iofs", sourceDriver, path)
 			if err != nil {
 				return err

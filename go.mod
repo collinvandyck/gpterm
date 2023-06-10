@@ -11,7 +11,6 @@ require (
 	github.com/google/go-github/v39 v39.2.0
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/kyleconroy/sqlc v1.17.2
-	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/muesli/reflow v0.3.0
 	github.com/sashabaranov/go-openai v1.9.3
 	github.com/spf13/cobra v1.6.1
@@ -20,6 +19,7 @@ require (
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
 	golang.org/x/oauth2 v0.6.0
 	golang.org/x/tools v0.6.0
+	modernc.org/sqlite v1.23.0
 )
 
 require (
@@ -72,6 +72,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denisenkom/go-mssqldb v0.10.0 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
 	github.com/edsrzf/mmap-go v0.0.0-20170320065105-0bce6a688712 // indirect
 	github.com/form3tech-oss/jwt-go v3.2.5+incompatible // indirect
@@ -115,7 +116,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/klauspost/asmfmt v1.3.2 // indirect
 	github.com/klauspost/compress v1.15.11 // indirect
-	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
 	github.com/ktrysmt/go-bitbucket v0.6.4 // indirect
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
@@ -123,6 +124,7 @@ require (
 	github.com/mattn/go-isatty v0.0.18 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
+	github.com/mattn/go-sqlite3 v1.14.16 // indirect
 	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
 	github.com/minio/c2goasm v0.0.0-20190812172519-36a3d3bbc4f3 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -141,7 +143,7 @@ require (
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
@@ -177,22 +179,21 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/uint128 v1.2.0 // indirect
 	modernc.org/b v1.0.0 // indirect
-	modernc.org/cc/v3 v3.36.3 // indirect
-	modernc.org/ccgo/v3 v3.16.9 // indirect
+	modernc.org/cc/v3 v3.40.0 // indirect
+	modernc.org/ccgo/v3 v3.16.13 // indirect
 	modernc.org/db v1.0.0 // indirect
 	modernc.org/file v1.0.0 // indirect
 	modernc.org/fileutil v1.0.0 // indirect
 	modernc.org/golex v1.0.1 // indirect
 	modernc.org/internal v1.0.0 // indirect
-	modernc.org/libc v1.17.1 // indirect
+	modernc.org/libc v1.22.5 // indirect
 	modernc.org/lldb v1.0.0 // indirect
 	modernc.org/mathutil v1.5.0 // indirect
-	modernc.org/memory v1.2.1 // indirect
+	modernc.org/memory v1.5.0 // indirect
 	modernc.org/opt v0.1.3 // indirect
 	modernc.org/ql v1.0.0 // indirect
 	modernc.org/sortutil v1.1.0 // indirect
-	modernc.org/sqlite v1.18.1 // indirect
 	modernc.org/strutil v1.1.3 // indirect
-	modernc.org/token v1.0.0 // indirect
+	modernc.org/token v1.0.1 // indirect
 	modernc.org/zappy v1.0.0 // indirect
 )
