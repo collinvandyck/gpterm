@@ -69,6 +69,7 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			o.options.move(-1)
 		}
 	}
+	return o, tea.Quit
 	return o, nil
 }
 
@@ -83,16 +84,26 @@ func (o optionsModel) View() string {
 	doc.WriteString(header)
 	doc.WriteString("\n\n")
 
-	var styleListItem = lipgloss.NewStyle().Foreground(lipgloss.Color("#abc"))
-	var styleListItemActive = styleListItem.Copy().Foreground(lipgloss.Color("#fff")).Background(lipgloss.Color("#abc"))
+	var lhs strings.Builder
+	var styleListItem = lipgloss.NewStyle().Foreground(lipgloss.Color("#abc")).MarginRight(5)
+	var styleListItemActive = styleListItem.Copy().Foreground(lipgloss.Color("#333")).Background(lipgloss.Color("#abc"))
 	for _, item := range o.options {
 		if item.active {
-			doc.WriteString(styleListItemActive.Render(item.name))
+			lhs.WriteString(styleListItemActive.Render(item.name))
 		} else {
-			doc.WriteString(styleListItem.Render(item.name))
+			lhs.WriteString(styleListItem.Render(item.name))
 		}
-		doc.WriteString("\n")
+		lhs.WriteString("\n")
 	}
+	var rhs strings.Builder
+	for _, item := range o.options {
+		if !item.active {
+			continue
+		}
+		rhs.WriteString(item.name)
+	}
+	lhsRhs := lipgloss.JoinHorizontal(lipgloss.Top, lhs.String(), rhs.String())
+	doc.WriteString(lhsRhs)
 
 	return lipgloss.NewStyle().Margin(2).Render(doc.String())
 }
