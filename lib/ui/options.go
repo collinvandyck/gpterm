@@ -8,49 +8,50 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/collinvandyck/gpterm/lib/sqlite"
+	"github.com/collinvandyck/gpterm/lib/ui/options"
 )
 
 type optionsModel struct {
 	uiOpts
-	width   int
-	height  int
-	options options
+	width    int
+	height   int
+	options  []option
+	selected int
+	active   bool // whether or not the option is active
 }
 
 type option struct {
-	name   string
-	active bool
+	name  string
+	model tea.Model
 }
 
-type options []option
+type optionState int
 
-func (o options) move(direction int) {
-	for i, option := range o {
-		if option.active {
-			o[i].active = false
-			o[(len(o)+i+direction)%len(o)].active = true
-			return
-		}
-	}
-}
+const (
+	optionStateInactive optionState = iota
+	optionStateSelected
+	optionStateActive
+)
 
 func newOptionsModel(opts uiOpts) optionsModel {
 	model := optionsModel{
 		uiOpts: opts.NamedLogger("options"),
 	}
-	model.options = options{
+	model.options = []option{
 		{
-			name:   "api key",
-			active: true,
+			name:  "api key",
+			model: options.NewAPIKeyModel(),
 		},
 		{
-			name: "preludes",
-		},
-		{
-			name: "three",
+			name:  "something else",
+			model: options.NewAPIKeyModel(),
 		},
 	}
 	return model
+}
+
+func (o *optionsModel) move(direction int) {
+	o.selected = (len(o.options) + o.selected + direction) % len(o.options)
 }
 
 // Init implements tea.Model.
@@ -74,9 +75,11 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "j", "down":
-			o.options.move(1)
+			o.move(1)
 		case "k", "up":
-			o.options.move(-1)
+			o.move(-1)
+		case "enter":
+			o.active = !o.active
 		}
 	case optionTick:
 		return o, o.tick()
@@ -112,22 +115,24 @@ func (o optionsModel) View() string {
 		PaddingRight(5).
 		MarginRight(2).
 		ColorWhitespace(true)
-	var styleListItemActive = styleListItem.Copy().Foreground(lipgloss.Color("#333")).Background(lipgloss.Color("#abc"))
-	for _, item := range o.options {
-		if item.active {
-			lhs.WriteString(styleListItemActive.Render(item.name))
+	var styleListItemSelected = styleListItem.Copy().Foreground(lipgloss.Color("#333")).Background(lipgloss.Color("#abc"))
+	for i, item := range o.options {
+		if o.selected == i {
+			lhs.WriteString(styleListItemSelected.Render(item.name))
 		} else {
 			lhs.WriteString(styleListItem.Render(item.name))
 		}
 		lhs.WriteString("\n")
 	}
+
 	var rhs strings.Builder
-	for _, item := range o.options {
-		if !item.active {
-			continue
-		}
-		rhs.WriteString(item.name)
+	if o.active {
+		var rhsModel = o.options[o.selected].model.View()
+		rhs.WriteString(rhsModel)
+	} else {
+		rhs.WriteString("...")
 	}
+
 	lhsRhs := lipgloss.JoinHorizontal(lipgloss.Top, lhs.String(), rhs.String())
 	doc.WriteString(lhsRhs)
 
