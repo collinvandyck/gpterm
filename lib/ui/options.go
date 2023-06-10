@@ -22,16 +22,8 @@ type optionsModel struct {
 
 type option struct {
 	name  string
-	model tea.Model
+	model options.Interface
 }
-
-type optionState int
-
-const (
-	optionStateInactive optionState = iota
-	optionStateSelected
-	optionStateActive
-)
 
 func newOptionsModel(opts uiOpts) optionsModel {
 	model := optionsModel{

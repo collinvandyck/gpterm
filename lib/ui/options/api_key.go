@@ -23,7 +23,7 @@ func (m ApiKeyModel) Init() tea.Cmd {
 }
 
 // Update implements tea.Model.
-func (m ApiKeyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m ApiKeyModel) Update(msg tea.Msg) (Interface, tea.Cmd) {
 	var cmd tea.Cmd
 	m.ti, cmd = m.ti.Update(msg)
 	return m, cmd
