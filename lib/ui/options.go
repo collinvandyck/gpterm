@@ -44,7 +44,7 @@ func newOptionsModel(opts uiOpts) optionsModel {
 			active: true,
 		},
 		{
-			name: "two",
+			name: "preludes",
 		},
 		{
 			name: "three",
@@ -55,7 +55,15 @@ func newOptionsModel(opts uiOpts) optionsModel {
 
 // Init implements tea.Model.
 func (o optionsModel) Init() tea.Cmd {
-	return nil
+	return o.tick()
+}
+
+type optionTick struct{}
+
+func (o optionsModel) tick() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return optionTick{}
+	})
 }
 
 // Update implements tea.Model.
@@ -70,8 +78,10 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "k", "up":
 			o.options.move(-1)
 		}
+	case optionTick:
+		return o, o.tick()
 	}
-	return o, tea.Quit
+	//return o, tea.Quit
 	return o, nil
 }
 
