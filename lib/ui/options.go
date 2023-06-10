@@ -1,19 +1,28 @@
 package ui
 
 import (
+	"strings"
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type optionsModel struct {
 	uiOpts
-	width  int
-	height int
+	width   int
+	height  int
+	options []option
+}
+
+type option struct {
+	name string
 }
 
 func newOptionsModel(opts uiOpts) optionsModel {
 	return optionsModel{
-		uiOpts: opts.NamedLogger("options"),
+		uiOpts:  opts.NamedLogger("options"),
+		options: []option{},
 	}
 }
 
@@ -36,28 +45,13 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (o optionsModel) View() string {
-	var (
-		margin = 2
-		border = 1
-		height = o.height - margin*2 - border*2
-		width  = o.width - margin*2 - border*2
-	)
-	var style = lipgloss.NewStyle().
-		Bold(true).
-		Blink(true).
-		Reverse(false).
-		Underline(true).
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("63")).
-		Foreground(lipgloss.Color("#FAFAFA")).
-		Background(lipgloss.Color("#151f18")).
-		Width(width).
-		Height(height).
-		AlignHorizontal(lipgloss.Center).
-		AlignVertical(lipgloss.Center).
-		Margin(margin)
+	var doc strings.Builder
+	var styleHeader = lipgloss.NewStyle().Bold(true)
 
-	var inner = lipgloss.Place(20, 30, lipgloss.Center, lipgloss.Center, "hello world")
+	header1 := styleHeader.Render("gpterm options menu")
+	header2 := styleHeader.Render(time.Now().Truncate(time.Second).String())
+	header := lipgloss.JoinVertical(lipgloss.Top, header1, header2)
+	doc.WriteString(header)
 
-	return style.Render(inner)
+	return lipgloss.NewStyle().Margin(2).Render(doc.String())
 }
