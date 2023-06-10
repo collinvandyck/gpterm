@@ -81,8 +81,10 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case optionTick:
 		return o, o.tick()
 	}
-	return o, tea.Quit
-	//return o, nil
+	if o.quitAfterRender {
+		return o, tea.Quit
+	}
+	return o, nil
 }
 
 // View implements tea.Model.

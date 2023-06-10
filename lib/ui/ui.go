@@ -23,6 +23,12 @@ func WithLogger(logger log.Logger) Option {
 	}
 }
 
+func WithQuitAfterRender(quit bool) Option {
+	return func(c *console) {
+		c.quitAfterRender = quit
+	}
+}
+
 func New(store *store.Store, client client.Client, opts ...Option) UI {
 	console := &console{
 		uiOpts: uiOpts{
@@ -42,11 +48,12 @@ func New(store *store.Store, client client.Client, opts ...Option) UI {
 
 type uiOpts struct {
 	log.Logger
-	store         *store.Store
-	client        client.Client
-	styles        styles
-	clientTimeout time.Duration // how long to wait for a response
-	rhsPadding    int           // RHS padding for rendered markdown
+	store           *store.Store
+	client          client.Client
+	styles          styles
+	clientTimeout   time.Duration // how long to wait for a response
+	rhsPadding      int           // RHS padding for rendered markdown
+	quitAfterRender bool          // quit after first render
 }
 
 func (uiOpts uiOpts) NamedLogger(prefix string) uiOpts {

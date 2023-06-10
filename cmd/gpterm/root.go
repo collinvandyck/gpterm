@@ -20,10 +20,11 @@ import (
 )
 
 var (
-	logfile        string
-	requestLogfile string
-	pprof          bool
-	clientHistory  int
+	logfile         string
+	requestLogfile  string
+	pprof           bool
+	clientHistory   int
+	quitAfterRender bool
 )
 
 var root = &cobra.Command{
@@ -77,7 +78,10 @@ var root = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("new client: %w", err)
 		}
-		ui := ui.New(str, client, ui.WithLogger(logger))
+		ui := ui.New(str, client,
+			ui.WithLogger(logger),
+			ui.WithQuitAfterRender(quitAfterRender),
+		)
 		return ui.Run(ctx)
 	},
 }
@@ -86,6 +90,7 @@ func init() {
 	root.Flags().StringVar(&logfile, "log", "", "log to this file")
 	root.Flags().StringVar(&requestLogfile, "request-log", "", "log HTTP requests to this file")
 	root.Flags().BoolVar(&pprof, "pprof", false, "start pprof http server in background")
+	root.Flags().BoolVar(&quitAfterRender, "quit", false, "quit after rendering")
 	root.Flags().IntVarP(&clientHistory, "context-size", "c", 5, "number of messages to send as context")
 
 	root.AddCommand(cmd.Auth())
