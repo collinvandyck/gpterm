@@ -118,8 +118,6 @@ func (m chatModel) View() string {
 	res += m.prompt.View()
 	res += "\n"
 	res += m.status.View()
-	res += "\n"
-	res += m.state.String()
 	return res
 }
 

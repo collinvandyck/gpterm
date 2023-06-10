@@ -81,8 +81,8 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case optionTick:
 		return o, o.tick()
 	}
-	//return o, tea.Quit
-	return o, nil
+	return o, tea.Quit
+	//return o, nil
 }
 
 // View implements tea.Model.
@@ -96,10 +96,20 @@ func (o optionsModel) View() string {
 	header := lipgloss.JoinVertical(lipgloss.Top, header1, header2, header3)
 
 	doc.WriteString(header)
-	doc.WriteString("\n\n")
+	doc.WriteString("\n")
+
+	divider := lipgloss.NewStyle().Foreground(lipgloss.Color("#888"))
+	doc.WriteString(strings.Repeat(divider.Render("─"), o.width))
+	doc.WriteString("\n")
+
+	doc.WriteString("\n")
 
 	var lhs strings.Builder
-	var styleListItem = lipgloss.NewStyle().Foreground(lipgloss.Color("#abc")).MarginRight(5)
+	var styleListItem = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#abc")).
+		PaddingRight(5).
+		MarginRight(2).
+		ColorWhitespace(true)
 	var styleListItemActive = styleListItem.Copy().Foreground(lipgloss.Color("#333")).Background(lipgloss.Color("#abc"))
 	for _, item := range o.options {
 		if item.active {
@@ -119,5 +129,9 @@ func (o optionsModel) View() string {
 	lhsRhs := lipgloss.JoinHorizontal(lipgloss.Top, lhs.String(), rhs.String())
 	doc.WriteString(lhsRhs)
 
-	return lipgloss.NewStyle().Margin(2).Render(doc.String())
+	docStyle := lipgloss.NewStyle().
+		Margin(2).
+		MaxWidth(o.width - 2)
+
+	return docStyle.Render(doc.String())
 }
