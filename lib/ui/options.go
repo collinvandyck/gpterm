@@ -69,25 +69,46 @@ func (o optionsModel) tick() tea.Cmd {
 
 // Update implements tea.Model.
 func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		o.width, o.height = msg.Width, msg.Height
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "j", "down":
-			o.move(1)
-		case "k", "up":
-			o.move(-1)
-		case "enter":
-			o.active = !o.active
+		if !o.active {
+			switch msg.String() {
+			case "j", "down":
+				o.move(1)
+			case "k", "up":
+				o.move(-1)
+			case "enter":
+				o.active = !o.active
+				if o.active {
+					cmds = append(cmds, o.options[o.selected].model.Init())
+				}
+			}
+		} else {
+			switch msg.String() {
+			case "esc":
+				o.active = !o.active
+			}
 		}
 	case optionTick:
 		return o, o.tick()
 	}
+	if o.active {
+		var cmd tea.Cmd
+		o.options[o.selected].model, cmd = o.options[o.selected].model.Update(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
 	if o.quitAfterRender {
 		return o, tea.Quit
 	}
-	return o, nil
+	if len(cmds) == 0 {
+		return o, nil
+	}
+	return o, tea.Sequence(cmds...)
 }
 
 // View implements tea.Model.
