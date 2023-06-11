@@ -17,6 +17,7 @@ type optionsModel struct {
 	options  []option
 	selected int
 	ready    bool
+	data     *optionsData
 }
 
 type option struct {
@@ -26,6 +27,7 @@ type option struct {
 
 // represents the options that can be configured through the options UI
 type optionsData struct {
+	apiKey string
 }
 
 type optionInterface interface {
@@ -41,11 +43,11 @@ func newOptionsModel(opts uiOpts) optionsModel {
 	model.options = []option{
 		{
 			name:  "api key",
-			model: newApiKeyOption("enter api key...", "foobar"),
+			model: newApiKeyOption("enter api key..."),
 		},
 		{
 			name:  "something else",
-			model: newApiKeyOption("enter something else...", ""),
+			model: newApiKeyOption("enter something else..."),
 		},
 	}
 	return model
@@ -59,9 +61,18 @@ func (o *optionsModel) move(direction int) tea.Cmd {
 // Init implements tea.Model.
 func (o optionsModel) Init() tea.Cmd {
 	return tea.Sequence(
+		o.load(),
 		o.tick(),
 		o.options[o.selected].model.Init(),
 	)
+}
+
+func (o optionsModel) load() tea.Cmd {
+	return func() tea.Msg {
+		return &optionsData{
+			apiKey: "f",
+		}
+	}
 }
 
 type optionTick struct{}
@@ -86,6 +97,18 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+n":
 			return o, o.move(-1)
 		}
+	case *optionsData:
+		o.ready = true
+		o.data = msg
+		// pass through the data to each option
+		for i, opt := range o.options {
+			var cmd tea.Cmd
+			o.options[i].model, cmd = opt.model.Update(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		}
+		return o, tea.Sequence(cmds...)
 	case optionTick:
 		return o, o.tick()
 	}
@@ -157,6 +180,9 @@ func (o optionsModel) View() string {
 
 	lhsRhs := lipgloss.JoinHorizontal(lipgloss.Top, lhs.String(), rhs.String())
 	doc.WriteString(lhsRhs)
+	doc.WriteString("\n\n")
+
+	doc.WriteString(fmt.Sprintf("%#+v", o.data))
 
 	docStyle := lipgloss.NewStyle().
 		Margin(2).

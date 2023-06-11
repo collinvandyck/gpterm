@@ -13,15 +13,15 @@ type apiKeyOption struct {
 	Key   string
 	ti    textinput.Model
 	focus int
+	data  *optionsData
 }
 
 type apiKeyState int
 
-func newApiKeyOption(placeholder string, initialValue string) *apiKeyOption {
+func newApiKeyOption(placeholder string) *apiKeyOption {
 	ti := textinput.NewModel()
 	ti.Placeholder = placeholder
 	ti.EchoMode = textinput.EchoPassword
-	ti.SetValue(initialValue)
 	ti.Focus()
 	return &apiKeyOption{ti: ti}
 }
@@ -33,6 +33,8 @@ func (m *apiKeyOption) Init() tea.Cmd {
 func (m *apiKeyOption) Update(msg tea.Msg) (optionInterface, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case *optionsData:
+		m.ti.SetValue(msg.apiKey)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
