@@ -4,7 +4,10 @@ set -e
 
 root=$(git rev-parse --show-toplevel)
 pkg=github.com/collinvandyck/gpterm/cmd/gpterm
-args="--log ${root}/gpterm.log --request-log ${root}/request.log --pprof=true"
+args=""
 
-export CGO_ENABLED=0
+if [[ $# -eq 0 ]]; then                                              
+	args="--log ${root}/gpterm.log --request-log ${root}/request.log --pprof=true"
+fi
+
 exec go run $pkg $args $@
