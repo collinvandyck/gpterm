@@ -16,11 +16,16 @@ type optionsModel struct {
 	height   int
 	options  []option
 	selected int
+	ready    bool
 }
 
 type option struct {
 	name  string
 	model optionInterface
+}
+
+// represents the options that can be configured through the options UI
+type optionsData struct {
 }
 
 type optionInterface interface {
@@ -53,7 +58,7 @@ func (o *optionsModel) move(direction int) tea.Cmd {
 
 // Init implements tea.Model.
 func (o optionsModel) Init() tea.Cmd {
-	return tea.Batch(
+	return tea.Sequence(
 		o.tick(),
 		o.options[o.selected].model.Init(),
 	)
@@ -101,6 +106,9 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View implements tea.Model.
 func (o optionsModel) View() string {
+	if !o.ready {
+		return "loading..."
+	}
 	var doc strings.Builder
 	var styleHeader = lipgloss.NewStyle().Bold(true)
 
