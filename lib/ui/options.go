@@ -16,7 +16,6 @@ type optionsModel struct {
 	height   int
 	options  []option
 	selected int
-	active   bool // whether or not the option is active
 }
 
 type option struct {
@@ -31,23 +30,27 @@ func newOptionsModel(opts uiOpts) optionsModel {
 	model.options = []option{
 		{
 			name:  "api key",
-			model: newApiKeyOption(),
+			model: newApiKeyOption("enter api key..."),
 		},
 		{
 			name:  "something else",
-			model: newApiKeyOption(),
+			model: newApiKeyOption("enter something else..."),
 		},
 	}
 	return model
 }
 
-func (o *optionsModel) move(direction int) {
+func (o *optionsModel) move(direction int) tea.Cmd {
 	o.selected = (len(o.options) + o.selected + direction) % len(o.options)
+	return o.options[o.selected].model.Init()
 }
 
 // Init implements tea.Model.
 func (o optionsModel) Init() tea.Cmd {
-	return o.tick()
+	return tea.Batch(
+		o.tick(),
+		o.options[o.selected].model.Init(),
+	)
 }
 
 type optionTick struct{}
@@ -66,35 +69,20 @@ func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		o.width, o.height = msg.Width, msg.Height
 	case tea.KeyMsg:
 		// navigation in the menu
-		if !o.active {
-			switch msg.String() {
-			case "j", "down":
-				o.move(1)
-			case "k", "up":
-				o.move(-1)
-			case "enter":
-				o.active = !o.active
-				if o.active {
-					cmds = append(cmds, o.options[o.selected].model.Init())
-				}
-			}
-		} else {
-			// esc is how we back out of an active option
-			switch msg.String() {
-			case "esc":
-				o.active = !o.active
-			}
+		switch msg.String() {
+		case "ctrl+p":
+			return o, o.move(-1)
+		case "ctrl+n":
+			return o, o.move(-1)
 		}
 	case optionTick:
 		return o, o.tick()
 	}
-	if o.active {
-		// pass through the message to the active option
-		var cmd tea.Cmd
-		o.options[o.selected].model, cmd = o.options[o.selected].model.Update(msg)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+	// pass through the message to the active option
+	var cmd tea.Cmd
+	o.options[o.selected].model, cmd = o.options[o.selected].model.Update(msg)
+	if cmd != nil {
+		cmds = append(cmds, cmd)
 	}
 	if o.quitAfterRender {
 		return o, tea.Quit
@@ -122,8 +110,17 @@ func (o optionsModel) View() string {
 	doc.WriteString(strings.Repeat(divider.Render("─"), o.width))
 	doc.WriteString("\n")
 
+	helpStyle := lipgloss.NewStyle().
+		Background(lipgloss.Color("#333")).
+		Foreground(lipgloss.Color("#dddddd")).
+		Width(o.width)
+	help := helpStyle.Render("ctrl+p: up, ctrl+n: down, enter: select, esc: back out")
+	doc.WriteString(help)
+	doc.WriteString("\n")
+	doc.WriteString(strings.Repeat(divider.Render("─"), o.width))
 	doc.WriteString("\n")
 
+	doc.WriteString("\n")
 	var lhs strings.Builder
 	var styleListItem = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("#abc")).
@@ -141,12 +138,8 @@ func (o optionsModel) View() string {
 	}
 
 	var rhs strings.Builder
-	if o.active {
-		var rhsModel = o.options[o.selected].model.View()
-		rhs.WriteString(rhsModel)
-	} else {
-		rhs.WriteString("...")
-	}
+	var rhsModel = o.options[o.selected].model.View()
+	rhs.WriteString(rhsModel)
 
 	lhsRhs := lipgloss.JoinHorizontal(lipgloss.Top, lhs.String(), rhs.String())
 	doc.WriteString(lhsRhs)

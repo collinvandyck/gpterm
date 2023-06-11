@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -10,9 +12,9 @@ type apiKeyOption struct {
 	ti  textinput.Model
 }
 
-func newApiKeyOption() *apiKeyOption {
+func newApiKeyOption(placeholder string) *apiKeyOption {
 	ti := textinput.NewModel()
-	ti.Placeholder = "Enter API Key"
+	ti.Placeholder = placeholder
 	ti.Focus()
 	return &apiKeyOption{ti: ti}
 }
@@ -31,5 +33,9 @@ func (m *apiKeyOption) Update(msg tea.Msg) (optionInterface, tea.Cmd) {
 
 // View implements tea.Model.
 func (m *apiKeyOption) View() string {
-	return m.ti.View()
+	var b strings.Builder
+	b.WriteString(m.ti.View())
+	b.WriteString("\n\n")
+	b.WriteString("yes/no")
+	return b.String()
 }
