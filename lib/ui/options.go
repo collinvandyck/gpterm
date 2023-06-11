@@ -36,12 +36,8 @@ func newOptionsModel(opts uiOpts) optionsModel {
 	}
 	model.options = []option{
 		{
-			name:  "api key",
-			model: newApiKeyOption("enter api key..."),
-		},
-		{
-			name:  "something else",
-			model: newApiKeyOption("enter something else..."),
+			name:  "General",
+			model: newGeneralOptions(),
 		},
 	}
 	return model
@@ -145,7 +141,7 @@ func (o optionsModel) View() string {
 		Background(lipgloss.Color("#333")).
 		Foreground(lipgloss.Color("#dddddd")).
 		Width(o.width)
-	help := helpStyle.Render("ctrl+p: up, ctrl+n: down, enter: select, esc: back out")
+	help := helpStyle.Render("Ctrl+p/n: switch sections | Tab/S-Tab: Cycle fields | Ctrl+c: cancel")
 	doc.WriteString(help)
 	doc.WriteString("\n")
 	doc.WriteString(strings.Repeat(divider.Render("─"), o.width))

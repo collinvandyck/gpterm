@@ -9,45 +9,47 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var _ model = (*apiKeyOption)(nil)
+var _ model = (*generalOptions)(nil)
 
-type apiKeyOption struct {
-	Key   string
-	ti    textinput.Model
-	focus int
-	data  *optionsData
+type generalOptions struct {
+	Key    string
+	apiKey textinput.Model
+	focus  int
+	data   *optionsData
 }
 
 type apiKeyState int
 
-func newApiKeyOption(placeholder string) *apiKeyOption {
-	ti := textinput.NewModel()
-	ti.Placeholder = placeholder
-	ti.EchoMode = textinput.EchoPassword
-	ti.Focus()
-	return &apiKeyOption{ti: ti}
+func newGeneralOptions() *generalOptions {
+	opts := &generalOptions{
+		apiKey: textinput.NewModel(),
+	}
+	opts.apiKey.Placeholder = "Enter API Key"
+	opts.apiKey.EchoMode = textinput.EchoPassword
+	opts.apiKey.Focus()
+	return opts
 }
 
-func (m *apiKeyOption) Init() tea.Cmd {
+func (m *generalOptions) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m *apiKeyOption) Update(msg tea.Msg) (model, tea.Cmd) {
+func (m *generalOptions) Update(msg tea.Msg) (model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case *optionsData:
 		m.data = msg
-		m.ti.SetValue(msg.apiKey)
+		m.apiKey.SetValue(msg.apiKey)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
 			switch m.focus {
 			case 0:
-				m.ti.Blur()
+				m.apiKey.Blur()
 				m.focus++
 			case 1:
 				// enter
-				m.data.apiKey = m.ti.Value()
+				m.data.apiKey = m.apiKey.Value()
 			case 2:
 				// cancel
 			}
@@ -58,22 +60,38 @@ func (m *apiKeyOption) Update(msg tea.Msg) (model, tea.Cmd) {
 				m.focus = (m.focus - 2)
 			}
 			m.focus = (m.focus + 3) % 3
-			m.ti.Blur()
+			m.apiKey.Blur()
 			switch m.focus {
 			case 0:
-				m.ti.Focus()
+				m.apiKey.Focus()
 			}
 		}
 	}
 	if m.focus == 0 {
-		m.ti, cmd = m.ti.Update(msg)
+		m.apiKey, cmd = m.apiKey.Update(msg)
 	}
 	return m, cmd
 }
 
-func (m *apiKeyOption) View() string {
+func (m *generalOptions) View() string {
 	var b strings.Builder
-	b.WriteString(m.ti.View())
+
+	sectionHeaderStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFF7DB")).
+		Background(lipgloss.Color("#F25D94")).
+		Padding(0, 1)
+	b.WriteString(sectionHeaderStyle.Render("General Options"))
+	b.WriteString("\n\n")
+
+	headerStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder(), false, false, true, false)
+	explainStyle := lipgloss.NewStyle().MarginBottom(1)
+	apiKey := lipgloss.JoinVertical(lipgloss.Top,
+		headerStyle.Render("API Key"),
+		explainStyle.Render("Your API key is used to authenticate with the API. You can find your API key in your account settings."),
+		m.apiKey.View(),
+	)
+	b.WriteString(apiKey)
 	b.WriteString("\n\n")
 
 	buttonStyle := lipgloss.NewStyle().
