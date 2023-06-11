@@ -36,11 +36,11 @@ func newOptionsModel(opts uiOpts) optionsModel {
 	model.options = []option{
 		{
 			name:  "api key",
-			model: newApiKeyOption("enter api key..."),
+			model: newApiKeyOption("enter api key...", "foobar"),
 		},
 		{
 			name:  "something else",
-			model: newApiKeyOption("enter something else..."),
+			model: newApiKeyOption("enter something else...", ""),
 		},
 	}
 	return model
