@@ -39,9 +39,3 @@ func (c commands) BatchWith(cmds ...tea.Cmd) tea.Cmd {
 	}
 	return tea.Batch(cmds...)
 }
-
-func (c *commands) Update(model tea.Model, msg tea.Msg) tea.Model {
-	model, cmd := model.Update(msg)
-	c.Add(cmd)
-	return model
-}
