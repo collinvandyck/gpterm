@@ -12,21 +12,24 @@ import (
 var _ model = (*generalOptions)(nil)
 
 type generalOptions struct {
-	Key    string
-	apiKey textinput.Model
-	focus  int
-	data   *optionsData
+	Key            string
+	apiKey         textinput.Model
+	focus          int
+	data           *optionsData
+	options        []model
+	selectedOption int
 }
 
 type apiKeyState int
 
-func newGeneralOptions() *generalOptions {
+func newGeneralOptions(uiOpts uiOpts) *generalOptions {
 	opts := &generalOptions{
 		apiKey: textinput.NewModel(),
 	}
 	opts.apiKey.Placeholder = "Enter API Key"
 	opts.apiKey.EchoMode = textinput.EchoPassword
 	opts.apiKey.Focus()
+	opts.options = append(opts.options, newApiKeyOption(uiOpts))
 	return opts
 }
 

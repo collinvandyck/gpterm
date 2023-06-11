@@ -37,7 +37,7 @@ func newOptionsModel(opts uiOpts) optionsModel {
 	model.options = []option{
 		{
 			name:  "General",
-			model: newGeneralOptions(),
+			model: newGeneralOptions(opts),
 		},
 	}
 	return model
