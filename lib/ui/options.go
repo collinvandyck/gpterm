@@ -23,6 +23,12 @@ type option struct {
 	model optionInterface
 }
 
+type optionInterface interface {
+	Init() tea.Cmd
+	Update(tea.Msg) (optionInterface, tea.Cmd)
+	View() string
+}
+
 func newOptionsModel(opts uiOpts) optionsModel {
 	model := optionsModel{
 		uiOpts: opts.NamedLogger("options"),

@@ -19,19 +19,16 @@ func newApiKeyOption(placeholder string) *apiKeyOption {
 	return &apiKeyOption{ti: ti}
 }
 
-// Init implements tea.Model.
 func (m *apiKeyOption) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// Update implements tea.Model.
 func (m *apiKeyOption) Update(msg tea.Msg) (optionInterface, tea.Cmd) {
 	var cmd tea.Cmd
 	m.ti, cmd = m.ti.Update(msg)
 	return m, cmd
 }
 
-// View implements tea.Model.
 func (m *apiKeyOption) View() string {
 	var b strings.Builder
 	b.WriteString(m.ti.View())
