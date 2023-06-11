@@ -4,16 +4,32 @@ import tea "github.com/charmbracelet/bubbletea"
 
 type commands []tea.Cmd
 
-func (c *commands) Add(cmd tea.Cmd) {
-	*c = append(*c, cmd)
+func (c *commands) Add(cmds ...tea.Cmd) {
+	cmds = c.removeNils(cmds)
+	*c = append(*c, cmds...)
 }
 
-func (c commands) SequenceWith(cmds ...tea.Cmd) tea.Cmd {
-	cmds = append(cmds, c...)
-	if len(cmds) == 0 {
+func (c *commands) Insert(cmds ...tea.Cmd) {
+	cmds = c.removeNils(cmds)
+	*c = append(cmds, *c...)
+}
+
+func (c *commands) removeNils(cmds []tea.Cmd) (res []tea.Cmd) {
+	res = make([]tea.Cmd, 0, len(cmds))
+	for _, cmd := range cmds {
+		if cmd == nil {
+			continue
+		}
+		res = append(res, cmd)
+	}
+	return
+}
+
+func (c commands) Sequence() tea.Cmd {
+	if len(c) == 0 {
 		return nil
 	}
-	return tea.Sequence(cmds...)
+	return tea.Sequence(c...)
 }
 
 func (c commands) BatchWith(cmds ...tea.Cmd) tea.Cmd {

@@ -60,7 +60,7 @@ func (m typewriterModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.reset()
 
 	}
-	return m, cmds.SequenceWith()
+	return m, cmds.Sequence()
 
 }
 
