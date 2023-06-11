@@ -9,6 +9,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var _ model = (*apiKeyOption)(nil)
+
 type apiKeyOption struct {
 	Key   string
 	ti    textinput.Model
@@ -30,10 +32,11 @@ func (m *apiKeyOption) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m *apiKeyOption) Update(msg tea.Msg) (optionInterface, tea.Cmd) {
+func (m *apiKeyOption) Update(msg tea.Msg) (model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case *optionsData:
+		m.data = msg
 		m.ti.SetValue(msg.apiKey)
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -44,6 +47,7 @@ func (m *apiKeyOption) Update(msg tea.Msg) (optionInterface, tea.Cmd) {
 				m.focus++
 			case 1:
 				// enter
+				m.data.apiKey = m.ti.Value()
 			case 2:
 				// cancel
 			}

@@ -22,18 +22,12 @@ type optionsModel struct {
 
 type option struct {
 	name  string
-	model optionInterface
+	model model
 }
 
 // represents the options that can be configured through the options UI
 type optionsData struct {
 	apiKey string
-}
-
-type optionInterface interface {
-	Init() tea.Cmd
-	Update(tea.Msg) (optionInterface, tea.Cmd)
-	View() string
 }
 
 func newOptionsModel(opts uiOpts) optionsModel {
