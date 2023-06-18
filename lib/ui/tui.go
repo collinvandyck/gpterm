@@ -7,119 +7,80 @@ import (
 type tuiState int
 
 const (
-	tuiStateInit tuiState = iota
-	tuiStateChat
+	tuiStateChat tuiState = iota
 	tuiStateOptions
 )
 
-func (s tuiState) String() string {
-	switch s {
-	case tuiStateInit:
-		return "init"
-	case tuiStateChat:
-		return "chat"
-	case tuiStateOptions:
-		return "options"
-	default:
-		return "unknown"
-	}
-}
-
 type tuiModel struct {
 	uiOpts
+	chat       model
+	options    model
 	state      tuiState
-	chat       chatModel
-	options    optionsModel
 	windowSize tea.WindowSizeMsg
+	ready      bool
 }
 
 func newTUIModel(opts uiOpts) tuiModel {
-	return tuiModel{
+	res := tuiModel{
 		uiOpts:  opts.NamedLogger("tui"),
 		chat:    newChatModel(opts),
 		options: newOptionsModel(opts),
 	}
+	res.state = tuiStateOptions
+	return res
 }
 
 // Init implements tea.Model.
 func (m tuiModel) Init() tea.Cmd {
-	return nil
-}
-
-func (m *tuiModel) currentUpdate(msg tea.Msg) tea.Cmd {
-	var cmd tea.Cmd
-	switch m.state {
-	case tuiStateChat:
-		m.chat, cmd = m.chat.Update(msg)
-	case tuiStateOptions:
-		m.options, cmd = m.options.Update(msg)
-	default:
-		return tea.Sequence(tea.Println("unknown state"), tea.Quit)
-	}
-	return cmd
-}
-
-func (m *tuiModel) setState(state tuiState) {
-	m.Log("Setting state", "state", state)
-	m.state = state
-	switch state {
-	case tuiStateChat:
-	case tuiStateOptions:
-	}
-}
-
-func (m *tuiModel) currentInit() tea.Cmd {
-	switch m.state {
-	case tuiStateChat:
+	if m.state == tuiStateChat {
 		return m.chat.Init()
-	case tuiStateOptions:
-		return m.options.Init()
-	default:
-		return tea.Sequence(tea.Println("unknown state"), tea.Quit)
 	}
+	return m.options.Init()
 }
 
 func (m tuiModel) switchModel() (tuiModel, tea.Cmd) {
-	var cmds []tea.Cmd
 	switch m.state {
-	case tuiStateInit:
-		m.setState(tuiStateOptions)
 	case tuiStateChat:
-		m.setState(tuiStateOptions)
+		m.state = tuiStateOptions
 	case tuiStateOptions:
-		m.setState(tuiStateChat)
-	default:
-		return m, nil
+		m.state = tuiStateChat
 	}
-	cmds = append(cmds,
-		tea.ClearScreen,
-		m.currentUpdate(m.windowSize),
-		m.currentInit(),
+	var (
+		updateCmd tea.Cmd
+		initCmd   tea.Cmd
 	)
-	return m, tea.Sequence(cmds...)
+	switch m.state {
+	case tuiStateChat:
+		m.chat, updateCmd = m.chat.Update(m.windowSize)
+		initCmd = m.chat.Init()
+	case tuiStateOptions:
+		m.options, updateCmd = m.options.Update(m.windowSize)
+		initCmd = m.options.Init()
+	}
+	return m, tea.Sequence(
+		tea.ClearScreen,
+		updateCmd,
+		initCmd,
+	)
 }
 
 // Update implements tea.Model.
 func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds commands
-
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		// important to set the window size beforehand
-		m.windowSize = msg
-		if m.state == tuiStateInit {
-			// set the model if this is our first window size
-			return m.switchModel()
-		}
+		// we must pass this message to all models
+		var (
+			chatCmd    tea.Cmd
+			optionsCmd tea.Cmd
+		)
+		m.chat, chatCmd = m.chat.Update(msg)
+		m.options, optionsCmd = m.options.Update(msg)
+		cmds.Add(chatCmd, optionsCmd)
+		m.Log("Done with update")
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+h":
-			switch m.state {
-			case tuiStateChat:
-				if !m.chat.isReady() {
-					return m, nil
-				}
-			}
 			return m.switchModel()
 		case "ctrl+c":
 			switch m.state {
@@ -130,6 +91,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	// pass through the message to the current model
 	var cmd tea.Cmd
 	switch m.state {
 	case tuiStateChat:
@@ -138,11 +100,6 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tuiStateOptions:
 		m.options, cmd = m.options.Update(msg)
 		cmds.Add(cmd)
-	default:
-		return m, tea.Sequence(
-			tea.Println("unhandled state"),
-			tea.Quit,
-		)
 	}
 	return m, cmds.Sequence()
 }
@@ -155,6 +112,6 @@ func (m tuiModel) View() string {
 	case tuiStateOptions:
 		return m.options.View()
 	default:
-		return ""
+		return "??"
 	}
 }

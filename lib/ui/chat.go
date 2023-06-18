@@ -63,6 +63,7 @@ type chatModel struct {
 	width      int
 	height     int
 	dropCount  int
+	active     bool // whether or not the chat is active
 }
 
 type textInput struct {
@@ -83,8 +84,8 @@ type backlog struct {
 	printed  bool
 }
 
-func newChatModel(uiOpts uiOpts) chatModel {
-	res := chatModel{
+func newChatModel(uiOpts uiOpts) *chatModel {
+	res := &chatModel{
 		uiOpts: uiOpts.NamedLogger("chat"),
 		prompt: promptModel{
 			uiOpts: uiOpts.NamedLogger("prompt"),
@@ -98,7 +99,7 @@ func newChatModel(uiOpts uiOpts) chatModel {
 	return res
 }
 
-func (m chatModel) Init() tea.Cmd {
+func (m *chatModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.loadBacklog,
 		m.loadConfig,
@@ -108,7 +109,7 @@ func (m chatModel) Init() tea.Cmd {
 	)
 }
 
-func (m chatModel) View() string {
+func (m *chatModel) View() string {
 	if m.state == chatStateInit {
 		return ""
 	}
@@ -125,7 +126,7 @@ func (m chatModel) isReady() bool {
 	return m.state == chatStateReady
 }
 
-func (m chatModel) Update(msg tea.Msg) (chatModel, tea.Cmd) {
+func (m *chatModel) Update(msg tea.Msg) (model, tea.Cmd) {
 	var cmds commands
 
 	switch msg := msg.(type) {

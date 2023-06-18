@@ -11,7 +11,10 @@ import (
 // without the awkward type assertions that would be otherwise
 // required to set the model after the Update method returns.
 type model interface {
+	// Init is called when the model becomes active
 	Init() tea.Cmd
+	// Blur is called when the model is no longer active
+	Blur()
 	Update(tea.Msg) (model, tea.Cmd)
 	View() string
 }
@@ -22,24 +25,28 @@ type model interface {
 // model to be too tightly coupled to the composed model.
 type composedModel interface {
 	model
-	Focus()
-	Blur()
 }
 
 // baseModel is a model that allows common data to be tracked.
 type baseModel struct {
 	width  int
 	height int
+	active bool
 }
 
-func (m baseModel) Init() tea.Cmd {
+func (m *baseModel) Init() tea.Cmd {
+	m.active = true
 	return nil
 }
 
-func (m baseModel) Update(tea.Msg) (model, tea.Cmd) {
+func (m *baseModel) Update(tea.Msg) (model, tea.Cmd) {
 	return m, nil
 }
 
-func (m baseModel) View() string {
+func (m *baseModel) View() string {
 	return ""
+}
+
+func (m *baseModel) Blur() {
+	m.active = false
 }

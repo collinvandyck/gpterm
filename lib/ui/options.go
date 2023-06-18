@@ -48,8 +48,13 @@ func (o *optionsModel) move(direction int) tea.Cmd {
 	return o.options[o.selected].model.Init()
 }
 
+func (o optionsModel) Ready() bool {
+	return o.ready
+}
+
 // Init implements tea.Model.
 func (o optionsModel) Init() tea.Cmd {
+	o.Log("Init")
 	return tea.Sequence(
 		o.load(),
 		o.tick(),
@@ -58,6 +63,7 @@ func (o optionsModel) Init() tea.Cmd {
 }
 
 func (o optionsModel) load() tea.Cmd {
+	o.Log("Load")
 	return func() tea.Msg {
 		return &optionsData{
 			apiKey: "f",
@@ -74,10 +80,11 @@ func (o optionsModel) tick() tea.Cmd {
 }
 
 // Update implements tea.Model.
-func (o optionsModel) Update(msg tea.Msg) (optionsModel, tea.Cmd) {
+func (o optionsModel) Update(msg tea.Msg) (model, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		o.Log("Window size changed", "width", msg.Width, "height", msg.Height)
 		o.width, o.height = msg.Width, msg.Height
 	case tea.KeyMsg:
 		// navigation in the menu
