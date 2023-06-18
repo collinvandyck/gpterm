@@ -125,7 +125,7 @@ func (m chatModel) isReady() bool {
 	return m.state == chatStateReady
 }
 
-func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m chatModel) Update(msg tea.Msg) (chatModel, tea.Cmd) {
 	var cmds commands
 
 	switch msg := msg.(type) {

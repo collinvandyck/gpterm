@@ -47,18 +47,16 @@ func (m tuiModel) Init() tea.Cmd {
 }
 
 func (m *tuiModel) currentUpdate(msg tea.Msg) tea.Cmd {
+	var cmd tea.Cmd
 	switch m.state {
 	case tuiStateChat:
-		model, cmd := m.chat.Update(msg)
-		m.chat = model.(chatModel)
-		return cmd
+		m.chat, cmd = m.chat.Update(msg)
 	case tuiStateOptions:
-		model, cmd := m.options.Update(msg)
-		m.options = model.(optionsModel)
-		return cmd
+		m.options, cmd = m.options.Update(msg)
 	default:
 		return tea.Sequence(tea.Println("unknown state"), tea.Quit)
 	}
+	return cmd
 }
 
 func (m *tuiModel) setState(state tuiState) {
@@ -103,7 +101,7 @@ func (m tuiModel) switchModel() (tuiModel, tea.Cmd) {
 
 // Update implements tea.Model.
 func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
+	var cmds commands
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -132,28 +130,21 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	var cmd tea.Cmd
 	switch m.state {
 	case tuiStateChat:
-		model, cmd := m.chat.Update(msg)
-		m.chat = model.(chatModel)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+		m.chat, cmd = m.chat.Update(msg)
+		cmds.Add(cmd)
 	case tuiStateOptions:
-		model, cmd := m.options.Update(msg)
-		m.options = model.(optionsModel)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+		m.options, cmd = m.options.Update(msg)
+		cmds.Add(cmd)
 	default:
-		cmds = append(cmds, tea.Println("unhandled state"))
-		cmds = append(cmds, tea.Quit)
+		return m, tea.Sequence(
+			tea.Println("unhandled state"),
+			tea.Quit,
+		)
 	}
-
-	if len(cmds) == 0 {
-		return m, nil
-	}
-	return m, tea.Sequence(cmds...)
+	return m, cmds.Sequence()
 }
 
 // View implements tea.Model.

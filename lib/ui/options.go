@@ -74,7 +74,7 @@ func (o optionsModel) tick() tea.Cmd {
 }
 
 // Update implements tea.Model.
-func (o optionsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (o optionsModel) Update(msg tea.Msg) (optionsModel, tea.Cmd) {
 	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
