@@ -13,8 +13,6 @@ import (
 type model interface {
 	// Init is called when the model becomes active
 	Init() tea.Cmd
-	// Blur is called when the model is no longer active
-	Blur()
 	Update(tea.Msg) (model, tea.Cmd)
 	View() string
 }
