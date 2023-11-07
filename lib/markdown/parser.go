@@ -81,8 +81,17 @@ func (r *Renderer) parse(node ast.Node) Expr {
 		return r.heading(node)
 	case *ast.Emphasis:
 		return r.emphasis(node)
+	case *ast.ThematicBreak:
+		return r.thematicBreak(node)
 	}
 	panic(fmt.Sprintf("unhandled node type: %T", node))
+}
+
+func (r *Renderer) thematicBreak(node *ast.ThematicBreak) Expr {
+	res := Paragraph{node: node}
+	res.blanksBefore = r.blanksBefore(node)
+	res.children = r.parseChildren(node)
+	return res
 }
 
 func (r *Renderer) document(node *ast.Document) Expr {
