@@ -13,7 +13,7 @@ require (
 	github.com/kyleconroy/sqlc v1.17.2
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/muesli/reflow v0.3.0
-	github.com/sashabaranov/go-openai v1.16.1
+	github.com/sashabaranov/go-openai v1.19.3
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.3
 	github.com/yuin/goldmark v1.5.4
