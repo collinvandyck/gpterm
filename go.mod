@@ -1,6 +1,7 @@
 module github.com/collinvandyck/gpterm
 
-go 1.18
+go 1.23.0
+
 toolchain go1.24.1
 
 require (
@@ -19,14 +20,13 @@ require (
 	github.com/stretchr/testify v1.8.3
 	github.com/yuin/goldmark v1.5.4
 	golang.org/x/exp v0.0.0-20220827204233-334a2380cb91
-	golang.org/x/oauth2 v0.7.0
+	golang.org/x/oauth2 v0.27.0
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d
 )
 
 require (
 	cloud.google.com/go v0.110.0 // indirect
-	cloud.google.com/go/compute v1.19.1 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	cloud.google.com/go/iam v0.13.0 // indirect
 	cloud.google.com/go/longrunning v0.4.1 // indirect
 	cloud.google.com/go/spanner v1.45.0 // indirect
